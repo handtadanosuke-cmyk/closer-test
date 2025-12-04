@@ -865,6 +865,114 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
             renderProfileContent(viewingProfileUser);
             navTo('profile-screen');
         }
+            <div style="margin-top:30px; padding:15px; background:#111; border:1px solid var(--company); border-radius:12px;">
+                <div style="font-size:14px; font-weight:bold; color:var(--company); margin-bottom:10px;">🏢 企業向け非公開データ</div>
+                <p style="font-size:10px; color:#888; margin-bottom:15px;">※この項目はスカウト権限を持つ企業担当者のみ閲覧できます。</p>
+                
+                <div style="margin-bottom:15px;">
+                    <label style="font-size:12px; color:#ccc; display:block; margin-bottom:5px;">転職意欲</label>
+                    <select id="edit-status" style="width:100%; padding:10px; background:#222; border:1px solid #444; color:#fff; border-radius:8px;">
+                        <option value="">未設定</option>
+                        <option value="今すぐ転職したい">今すぐ転職したい</option>
+                        <option value="良い話があれば">良い話があれば</option>
+                        <option value="情報収集中">情報収集中</option>
+                        <option value="検討していない">検討していない</option>
+                    </select>
+                </div>
+
+                <div style="display:flex; gap:10px; margin-bottom:15px;">
+                    <div style="flex:1;">
+                        <label style="font-size:12px; color:#ccc; display:block; margin-bottom:5px;">現年収 (万円)</label>
+                        <input type="number" id="edit-salary-current" placeholder="例: 450" style="margin-bottom:0;">
+                    </div>
+                    <div style="flex:1;">
+                        <label style="font-size:12px; color:#ccc; display:block; margin-bottom:5px;">希望年収 (万円)</label>
+                        <input type="number" id="edit-salary-desire" placeholder="例: 550" style="margin-bottom:0;">
+                    </div>
+                </div>
+
+                <label style="font-size:12px; color:#ccc; display:block; margin-bottom:5px;">主な実績・アピール</label>
+                <textarea id="edit-achievements" rows="4" placeholder="例：昨年度売上1.2億円（達成率120%）、新人賞受賞など。具体的な数字で書くとスカウト率が上がります。" style="background:#222; font-size:13px;"></textarea>
+            </div>
+            ```
+
+---
+
+### ステップ2：JavaScriptの修正（保存と読み込み）
+
+ファイルの一番最後（1630行目付近〜）にある **`openProfileEdit`** と **`saveProfile`** の2つの関数を、以下の新しいコードに**すべて置き換えて**ください。
+
+※これで、画面を開いたときに保存済みのデータが表示され、修正して保存できるようになります。
+
+```javascript
+        /* --- 修正版: プロフィール編集画面を開く（データをセット） --- */
+        function openProfileEdit() {
+            const myName = JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
+            const u = dummyUsers[myName];
+
+            // 既存データのセット
+            document.getElementById('edit-name').value = u.name || '';
+            document.getElementById('edit-email').value = u.email || '';
+            document.getElementById('edit-history').value = u.history || '';
+            document.getElementById('edit-role').value = u.role || '';
+            document.getElementById('edit-bio').value = u.bio || '';
+            
+            if(u.social) {
+                document.getElementById('edit-twitter').value = u.social.twitter || '';
+                document.getElementById('edit-insta').value = u.social.insta || '';
+                document.getElementById('edit-threads').value = u.social.threads || '';
+            }
+            if(u.img) {
+                document.getElementById('edit-avatar-img').src = u.img;
+                document.getElementById('edit-avatar-img').style.display = 'block';
+                document.getElementById('edit-avatar-preview').style.display = 'none';
+            }
+
+            // ★追加: スカウト情報のセット
+            if(u.scoutInfo) {
+                document.getElementById('edit-status').value = u.scoutInfo.status || '';
+                document.getElementById('edit-salary-current').value = u.scoutInfo.currentSalary || '';
+                document.getElementById('edit-salary-desire').value = u.scoutInfo.desiredSalary || '';
+                document.getElementById('edit-achievements').value = u.scoutInfo.achievements || '';
+            }
+
+            navTo('profile-edit-screen');
+        }
+
+        /* --- 修正版: プロフィール保存（スカウト情報対応） --- */
+        function saveProfile() {
+            const myName = JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
+            const u = dummyUsers[myName];
+            
+            // 基本情報の保存
+            const newName = document.getElementById('edit-name').value;
+            if(newName) u.name = newName;
+            u.history = document.getElementById('edit-history').value;
+            u.role = document.getElementById('edit-role').value;
+            u.bio = document.getElementById('edit-bio').value;
+            
+            if(!u.social) u.social = {};
+            u.social.twitter = document.getElementById('edit-twitter').value;
+            u.social.insta = document.getElementById('edit-insta').value;
+            u.social.threads = document.getElementById('edit-threads').value;
+            
+            const imgSrc = document.getElementById('edit-avatar-img').src;
+            if(imgSrc && imgSrc !== window.location.href) u.img = imgSrc;
+            
+            // ★追加: スカウト用情報の保存
+            if(!u.scoutInfo) u.scoutInfo = {};
+            u.scoutInfo.status = document.getElementById('edit-status').value;
+            u.scoutInfo.currentSalary = document.getElementById('edit-salary-current').value;
+            u.scoutInfo.desiredSalary = document.getElementById('edit-salary-desire').value;
+            u.scoutInfo.achievements = document.getElementById('edit-achievements').value;
+
+            saveData();
+            sessionStorage.setItem('closer_logged_in_user', JSON.stringify(u));
+            
+            alert("プロフィールを更新しました");
+            backToPrev();
+            refreshApp();
+        }
             <button class="btn btn-gold" onclick="saveProfile()">保存する</button>
         </div>
     </div>
@@ -2008,6 +2116,7 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
     </script>
 </body>
 </html>
+
 
 
 
