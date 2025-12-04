@@ -1513,9 +1513,9 @@
                 
                 item.onclick = () => { 
                     document.getElementById('notification-modal').style.display='none'; 
-                    // 修正: スカウト通知ならスカウト画面へ遷移
+                    // ★修正: スカウト通知ならスカウト画面へ遷移
                     if(n.type === 'scout') {
-                        menuAction('scout-screen');
+                        navTo('scout-screen');
                     } else if(n.isPost && n.targetId) {
                         openDetail(n.targetId); 
                     }
@@ -1839,7 +1839,7 @@
         }  
         /* --- 企業とのチャット開始用 --- */
         function startChatWithCompany(companyName) {
-            // ダミーユーザーとして企業を登録（存在しない場合）
+            // ダミーユーザーとして企業を登録（チャット画面表示のため）
             if(!dummyUsers[companyName]) {
                 dummyUsers[companyName] = { 
                     name: companyName, 
@@ -1848,17 +1848,19 @@
                     img: '', 
                     bio: '採用担当です。', 
                     isAnonymous: false,
-                    mySubActive: false // 企業はサブスク不要でチャット可能とする
+                    mySubActive: false, // 企業はサブスク不要
+                    subscriptions: []
                 };
             }
             
-            // プロフィールを開いてチャットタブへ切り替え
+            // プロフィールを開いてからチャットタブへ切り替え
             openProfile(companyName);
             switchProfileTab('chat');
         }
     </script>
 </body>
 </html>
+
 
 
 
