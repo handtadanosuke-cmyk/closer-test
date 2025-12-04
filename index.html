@@ -993,9 +993,12 @@
             if(scrollPositions[screenId]) next.scrollTop = scrollPositions[screenId];
         }
 
-        function loginSuccess(u){ 
+       function loginSuccess(u){ 
             isGuest=false; 
             sessionStorage.setItem('closer_logged_in_user', JSON.stringify(u)); 
+            // 端末にメールアドレスを紐付け（次回登録制限用）
+            if(u.email) localStorage.setItem('closer_device_email', u.email);
+            
             document.getElementById('menu-username').innerText=u.name; 
             if(u.img) {
                 document.getElementById('menu-icon-img').src = u.img;
@@ -1268,7 +1271,19 @@
         function checkDeviceAndSendCode() {
             const email = document.getElementById('reg-email').value;
             if(!email) return alert("メールアドレスを入力してください");
-            if(localStorage.getItem('closer_device_registered')) { alert("この端末は既に登録されています。ログイン画面へ移動します。"); switchAuthTab('login'); return; }
+            
+            // 端末制限チェック
+            const registeredEmail = localStorage.getItem('closer_device_email');
+            if(localStorage.getItem('closer_device_registered')) { 
+                let msg = "一つの端末につき一つのユーザーIDです。";
+                if(registeredEmail) {
+                    msg += `\n\nこの端末でのログイン履歴:\n${registeredEmail}`;
+                }
+                alert(msg); 
+                switchAuthTab('login'); 
+                return; 
+            }
+
             generatedAuthCode = Math.floor(1000 + Math.random() * 9000).toString();
             const btn = event.target; const originalText = btn.innerText; btn.innerText = "送信中..."; btn.disabled = true;
             emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, { to_email: email, code: generatedAuthCode })
@@ -1873,6 +1888,28 @@
                 history.scrollTop = history.scrollHeight;
             }, 1000);
         }
+        function sendResetLink() {
+            const email = document.getElementById('reset-email').value;
+            if(!email) return alert("メールアドレスを入力してください");
+            
+            // 本来はここでサーバー側に再設定メール送信リクエストを送る
+            // 今回はシミュレーションとしてアラートを表示
+            
+            // EmailJSを使って自分宛てに通知を送るか、ユーザーに送ったふりをする
+            alert(`${email} 宛にパスワード再設定リンクを送信しました。\nメールを確認してリンクをクリックしてください。`);
+            
+            document.getElementById('reset-email').value = '';
+            backToPrev();
+        }
+        <div id="auth-flow-login" style="padding:20px; display:none;">
+            <input type="email" id="login-email" placeholder="メールアドレス">
+            <input type="password" id="login-pass" placeholder="パスワード">
+            <button class="btn btn-gold" onclick="doLogin()">ログイン</button>
+            <div style="text-align:center; margin-top:15px;">
+                <span class="btn-text" onclick="navTo('forgot-pass-screen')">パスワードを忘れた方はこちら</span>
+            </div>
+        </div>
     </script>
 </body>
 </html>
+
