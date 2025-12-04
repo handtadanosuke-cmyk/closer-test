@@ -1101,7 +1101,7 @@
             const myName = isGuest ? '' : JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
             viewingProfileUser = userId === 'me' ? myName : userId;
 
-            // ★修正ポイント: ゲストが「自分(me)」を開こうとした時だけログインへ誘導し、他人は閲覧許可する
+            // ゲストが「自分(me)」を開こうとした時だけログインへ誘導
             if(userId === 'me' && isGuest) {
                 return navTo('auth-screen');
             }
@@ -1135,7 +1135,6 @@
             
             // サブスクボタンの表示判定
             if(!u.isAnonymous && userId !== 'me' && u.mySubActive) {
-                // ★修正ポイント: ゲストの場合 subscriptions がないので空配列をセットしてエラー回避
                 const mySubs = (dummyUsers[myName] && dummyUsers[myName].subscriptions) ? dummyUsers[myName].subscriptions : [];
                 const isSubscribed = mySubs.includes(dummyUsers[userId].name);
                 
@@ -1795,6 +1794,7 @@
     </script>
 </body>
 </html>
+
 
 
 
