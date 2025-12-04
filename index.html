@@ -1694,37 +1694,8 @@
         else showRatingInput();
 
         navTo('answer-view-screen');
-    };
-        if(!ans) return;
-
-        // サブスクロック等の判定
-        const myName = isGuest ? '' : JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
-        if(ans.isPremium) {
-            if(isGuest || (ans.user !== myName && (!dummyUsers[myName].subscriptions || !dummyUsers[myName].subscriptions.includes(ans.user)))) {
-                return alert("この回答はロックされています（サブスク限定）");
-            }
-        }
-
-        // 画面に値をセット
-        document.getElementById('view-ans-text').innerText = ans.text;
-        document.getElementById('view-ans-reason').innerText = ans.reason || '（記載なし）';
-
-        // 自分が既に評価済みかチェック
-        const u = dummyUsers[myName] || {};
-        // ユーザーデータに評価済みリストがなければ作成
-        if(!u.votedAnswers) u.votedAnswers = [];
+    };　// ← ここで openAnswerDetail が終わる
         
-        // 自分の回答、または既に評価済みなら結果を表示
-        const hasVoted = u.votedAnswers.includes(ansId) || ans.user === myName;
-
-        if(hasVoted) {
-            showRatingResult(ans);
-        } else {
-            showRatingInput();
-        }
-
-        navTo('answer-view-screen');
-    };
 
     // 入力モードを表示
     function showRatingInput() {
@@ -1794,6 +1765,7 @@
     </script>
 </body>
 </html>
+
 
 
 
