@@ -1312,7 +1312,25 @@
         function goToBioStep() { if(!document.getElementById('reg-name').value || !document.getElementById('reg-pass').value) return alert("必須項目を入力してください"); document.getElementById('reg-step-3').style.display = 'none'; document.getElementById('reg-step-4').style.display = 'block'; }
         function previewImage(input) { if (input.files && input.files[0]) { const reader = new FileReader(); reader.onload = function(e) { document.getElementById('avatar-preview').style.display = 'none'; document.getElementById('avatar-img').src = e.target.result; document.getElementById('avatar-img').style.display = 'block'; }; reader.readAsDataURL(input.files[0]); } }
         function completeRegistration(){ const name = document.getElementById('reg-name').value; const u = { name: name, email: document.getElementById('reg-email').value, password: document.getElementById('reg-pass').value, role: 'Newcomer', rate: '0.00', coins: 0, subscriptions: [], savedAnswers: [], products: selectedProductTags, img: document.getElementById('avatar-img').src, social: {}, curiousItems:[], config:{} }; dummyUsers[name] = u; localStorage.setItem('closer_device_registered', 'true'); saveData(); loginSuccess(u); }
-        function doLogin(){ loadAllData(); const email = document.getElementById('login-email').value; const users = Object.values(dummyUsers); const u = users.find(u => u.email === email || u.name !== 'Guest'); if(u) loginSuccess(u); else alert("ユーザーがいません"); }
+        function doLogin(){ 
+            loadAllData(); 
+            const inputVal = document.getElementById('login-email').value; 
+            const passVal = document.getElementById('login-pass').value;
+            const users = Object.values(dummyUsers); 
+            
+            // 修正: 入力されたメール または 名前 が完全に一致するユーザーを探す
+            const u = users.find(u => (u.email === inputVal || u.name === inputVal) && u.name !== 'Guest'); 
+            
+            if(u) {
+                // パスワードが設定されている場合はチェックする
+                if(u.password && u.password !== passVal) {
+                    return alert("パスワードが違います");
+                }
+                loginSuccess(u); 
+            } else {
+                alert("ユーザーが見つかりません。\n登録したメールアドレスまたはユーザー名を入力してください。"); 
+            }
+        }
         function startAsGuest(){ isGuest=true; sessionStorage.removeItem('closer_logged_in_user'); refreshApp(); navTo('timeline-screen'); }
         function renderTags(elementId, isSelectable = false) { const container = document.getElementById(elementId); container.innerHTML = ''; products.forEach(p => { const tag = document.createElement('div'); tag.className = 'choice-tag'; tag.innerText = p; if(isSelectable) { tag.onclick = function() { this.classList.toggle('selected'); if(elementId === 'product-tags') { if(this.classList.contains('selected')) selectedProductTags.push(p); else selectedProductTags = selectedProductTags.filter(t => t !== p); } }; } container.appendChild(tag); }); }
         
@@ -1797,6 +1815,7 @@
     </script>
 </body>
 </html>
+
 
 
 
