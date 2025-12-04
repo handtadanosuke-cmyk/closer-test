@@ -912,7 +912,7 @@
         }
 
         function refreshApp() {
-            calculateAllUserRates();
+            // calculateAllUserRates(); // 削除: 定義されていない関数のためエラーの原因となる
             const current = document.querySelector('.screen.active');
             if(current) {
                 if(current.id === 'timeline-screen') renderTimeline();
@@ -1348,9 +1348,229 @@
         function openProfileEdit(){ /* 前と同じ */ navTo('profile-edit-screen'); }
         function previewEditImage(input){ /* 前と同じ */ }
         function submitPost(){ /* 前と同じ */ const t=document.getElementById('post-content').value; dummyPosts.unshift({id:Date.now(), title:t, tags:['その他'], time:'Now', curiousCount:0, userId:JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name, companyId:null, isCurious: false}); saveData(); refreshApp(); document.getElementById('post-modal').style.display='none'; }
-        function submitAnswer(){ /* 前と同じ */ const t=document.getElementById('answer-content').value; dummyAnswers.push({id:Date.now(), postId:currentPostId, user:JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name, text:t, reason:'', votes:{}, isPremium:false, replies:[]}); saveData(); refreshApp(); document.getElementById('answer-modal').style.display='none'; }
-        function submitReply(ansId){ /* 前と同じ */ }
-        function openReplyInput(ansId){ /* 前と同じ */ }
+        function submitAnswer(){ 
+            const t=document.getElementById('answer-content').value; 
+            if(!t) return;
+            const myName = isGuest ? 'Guest' : JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
+            dummyAnswers.push({
+                id:Date.now(), 
+                postId:currentPostId, 
+                user:myName, 
+                text:t, 
+                reason:document.getElementById('answer-reason').value, 
+                votes:{}, 
+                isPremium:false, 
+                replies:[]
+            }); 
+            saveData(); 
+            refreshApp(); 
+            document.getElementById('answer-modal').style.display='none'; 
+        }
+
+        /* --- 以下、不足していた関数群を一括追加 --- */
+
+        function menuAction(screenId, isProfile=false) {
+            if(document.getElementById('side-menu').classList.contains('open')) toggleMenu();
+            if(isProfile) {
+                if(isGuest) return alert("ログインが必要です");
+                const myName = JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
+                openProfile(myName);
+            } else {
+                navTo(screenId);
+            }
+        }
+
+        function checkMemberAccess(screenId, type) {
+            if(isGuest) {
+                alert("会員限定機能です。ログインまたは登録してください。");
+                return navTo('auth-screen');
+            }
+            if(type === 'company') {
+                document.getElementById('company-code-modal').style.display = 'flex';
+                toggleMenu();
+                return;
+            }
+            if(type === 'post') {
+                openPostModal();
+                return;
+            }
+            if(screenId) {
+                if(document.getElementById('side-menu').classList.contains('open')) toggleMenu();
+                navTo(screenId);
+            }
+        }
+
+        function openDetail(postId) {
+            currentPostId = postId;
+            const p = dummyPosts.find(x => x.id === postId);
+            if(!p) return;
+            document.getElementById('detail-title').innerText = p.title;
+            const ctxDiv = document.getElementById('detail-context');
+            ctxDiv.innerText = p.context;
+            ctxDiv.style.display = p.context ? 'block' : 'none';
+            document.getElementById('detail-tags').innerHTML = p.tags.map(t=>`<span class="tag">${t}</span>`).join('');
+            renderAnswers(postId);
+            navTo('detail-screen');
+        }
+
+        function renderRanking() {
+            const list = document.getElementById('ranking-list');
+            list.innerHTML = '';
+            const sorted = [...dummyPosts].sort((a,b) => b.curiousCount - a.curiousCount);
+            sorted.forEach((p, idx) => {
+                if(idx >= 10) return;
+                const div = document.createElement('div');
+                div.className = 'user-card';
+                div.innerHTML = `<div class="user-card-left"><div class="user-rank-num ${idx<3?'top3':''}">${idx+1}</div><div><div style="font-weight:bold;">${p.title}</div><div style="font-size:12px; color:#888;">🤔 ${p.curiousCount} Curious</div></div></div>`;
+                div.onclick = () => openDetail(p.id);
+                list.appendChild(div);
+            });
+        }
+
+        function renderUserRanking() {
+            calculateAllUserRates();
+            const list = document.getElementById('user-ranking-list');
+            list.innerHTML = '';
+            const users = Object.values(dummyUsers).filter(u => u.name !== 'Guest');
+            users.sort((a,b) => parseFloat(b.rate) - parseFloat(a.rate));
+            users.forEach((u, idx) => {
+                const div = document.createElement('div');
+                div.className = 'user-card';
+                div.innerHTML = `<div class="user-card-left"><div class="user-rank-num ${idx<3?'top3':''}">${idx+1}</div><img src="${u.img||''}" class="user-mini-icon" style="width:30px;height:30px;"><div><div style="font-weight:bold;">${u.name}</div><div style="font-size:11px; color:#888;">${u.role}</div></div></div><div class="user-score">${u.rate}</div>`;
+                div.onclick = () => openProfile(u.name);
+                list.appendChild(div);
+            });
+        }
+
+        function calculateAllUserRates() {
+            Object.values(dummyUsers).forEach(u => {
+                let score = 0;
+                const myAnswers = dummyAnswers.filter(a => a.user === u.name);
+                if(myAnswers.length > 0) {
+                    // 簡易的なスコア計算
+                    const totalVotes = myAnswers.reduce((acc, cur) => acc + (cur.votes[5]||0)*5 + (cur.votes[1]||0), 0);
+                    score = (totalVotes / myAnswers.length).toFixed(2);
+                }
+                u.rate = score;
+            });
+        }
+
+        function renderBookmarks() {
+            const list = document.getElementById('bookmarks-list');
+            list.innerHTML = '';
+            const myName = isGuest ? '' : JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
+            if(isGuest) return;
+            const savedIds = dummyUsers[myName].savedAnswers || [];
+            document.getElementById('bookmark-count').innerText = `${savedIds.length} items`;
+            
+            savedIds.forEach(id => {
+                const ans = dummyAnswers.find(a => a.id === id);
+                if(ans) {
+                    const div = document.createElement('div');
+                    div.className = 'answer-card';
+                    div.innerHTML = `<div class="answer-header"><div class="answer-author">${ans.user}</div></div><div class="answer-body">${ans.text}</div><button class="btn-sm btn-outline" onclick="openDetail(${ans.postId})">元の投稿を見る</button>`;
+                    list.appendChild(div);
+                }
+            });
+        }
+
+        function sendAIMessage() {
+            const input = document.getElementById('ai-chat-input');
+            const txt = input.value;
+            if(!txt) return;
+            const area = document.getElementById('ai-chat-area');
+            area.innerHTML += `<div class="chat-bubble bubble-user">${txt}</div>`;
+            input.value = '';
+            area.scrollTop = area.scrollHeight;
+            setTimeout(() => {
+                const replies = ["なるほど、それで？", "高いね。", "検討します。", "興味ないかな。", "他社と比較してるんだよね。"];
+                const r = replies[Math.floor(Math.random()*replies.length)];
+                area.innerHTML += `<div class="chat-bubble bubble-ai">${r}</div>`;
+                area.scrollTop = area.scrollHeight;
+            }, 1000);
+        }
+
+        function initiateCoinPurchase(coins, price) {
+            pendingPayment = { coins, price };
+            document.getElementById('wallet-modal').style.display='none';
+            document.getElementById('pay-amount').innerText = price;
+            document.getElementById('payment-gateway-modal').style.display='flex';
+        }
+
+        function processPaymentMock(method) {
+            if(!pendingPayment) return;
+            const myName = JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
+            dummyUsers[myName].coins += pendingPayment.coins;
+            saveData();
+            alert(`決済完了: ${method}\n${pendingPayment.coins}コインを追加しました。`);
+            document.getElementById('payment-gateway-modal').style.display='none';
+            refreshApp();
+        }
+
+        function subscribeSystem(plan, price) {
+            const myName = JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
+            if(dummyUsers[myName].coins < price) return alert("コイン不足です");
+            if(confirm("プラン変更しますか？")) {
+                dummyUsers[myName].coins -= price;
+                dummyUsers[myName].plan = plan;
+                if(plan !== 'standard') dummyUsers[myName].isPro = true;
+                saveData();
+                alert("変更しました");
+                document.getElementById('system-plan-modal').style.display='none';
+                refreshApp();
+            }
+        }
+
+        function saveCreatorSettings() {
+            const myName = JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
+            dummyUsers[myName].mySubPrice = document.getElementById('creator-price').value;
+            dummyUsers[myName].mySubActive = document.getElementById('creator-status').value === 'on';
+            saveData();
+            alert("保存しました");
+            document.getElementById('creator-modal').style.display='none';
+        }
+
+        function saveProfile() {
+            const myName = JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
+            const u = dummyUsers[myName];
+            const newName = document.getElementById('edit-name').value;
+            if(newName) u.name = newName;
+            u.history = document.getElementById('edit-history').value;
+            u.role = document.getElementById('edit-role').value;
+            u.bio = document.getElementById('edit-bio').value;
+            u.social.twitter = document.getElementById('edit-twitter').value;
+            u.social.insta = document.getElementById('edit-insta').value;
+            u.social.threads = document.getElementById('edit-threads').value;
+            if(document.getElementById('edit-avatar-img').src) u.img = document.getElementById('edit-avatar-img').src;
+            saveData();
+            sessionStorage.setItem('closer_logged_in_user', JSON.stringify(u));
+            alert("保存しました");
+            backToPrev();
+            refreshApp();
+        }
+        
+        function openReplyInput(ansId) {
+            const inputArea = document.getElementById('reply-input-' + ansId);
+            if(inputArea.style.display === 'none') {
+                inputArea.style.display = 'flex';
+            } else {
+                inputArea.style.display = 'none';
+            }
+        }
+
+        function submitReply(ansId) {
+            const txtInput = document.getElementById('reply-text-' + ansId);
+            const txt = txtInput.value;
+            if(!txt) return;
+            const ans = dummyAnswers.find(a => a.id === ansId);
+            const myName = JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
+            if(!ans.replies) ans.replies = [];
+            ans.replies.push({user: myName, text: txt});
+            saveData();
+            refreshApp();
+            alert("返信しました");
+        }
     </script>
 </body>
 </html>
+
