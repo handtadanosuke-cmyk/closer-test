@@ -469,7 +469,7 @@
                 <div class="q-context" style="margin-top:10px;">年収800万円〜 / フルリモート可 / インセンティブあり</div>
                 <div class="card-actions">
                     <div class="action-item" onclick="alert('詳細を確認します')">詳細を見る</div>
-                    <div class="action-item" style="color:var(--accent);">返信する</div>
+                    <div class="action-item" style="color:var(--accent);" onclick="startChatWithCompany('株式会社〇〇不動産')">返信する</div>
                 </div>
             </div>
         </div>
@@ -1497,8 +1497,33 @@
         }
 
         function checkNotification() { const hasUnread = dummyNotifications.some(n => !n.read); if(hasUnread) { document.getElementById('badge-timeline').classList.add('active'); document.getElementById('badge-ranking').classList.add('active'); } }
-        function toggleNotification() { const modal = document.getElementById('notification-modal'); const list = document.getElementById('notification-list'); list.innerHTML = ''; dummyNotifications.forEach(n => { const item = document.createElement('div'); item.className = 'notification-item'; let icon = '🔔'; if(n.type === 'reply') icon = '💬'; if(n.type === 'scout') icon = '🚀'; item.innerHTML = `<div class="notif-icon">${icon}</div><div class="notif-content"><div>${n.text}</div><div class="notif-time">${n.time}</div></div>`; item.onclick = () => { document.getElementById('notification-modal').style.display='none'; if(n.isPost && n.targetId) openDetail(n.targetId); }; list.appendChild(item); }); modal.style.display = 'flex'; }
-        
+        function toggleNotification() { 
+            const modal = document.getElementById('notification-modal'); 
+            const list = document.getElementById('notification-list'); 
+            list.innerHTML = ''; 
+            
+            dummyNotifications.forEach(n => { 
+                const item = document.createElement('div'); 
+                item.className = 'notification-item'; 
+                let icon = '🔔'; 
+                if(n.type === 'reply') icon = '💬'; 
+                if(n.type === 'scout') icon = '🚀'; 
+                
+                item.innerHTML = `<div class="notif-icon">${icon}</div><div class="notif-content"><div>${n.text}</div><div class="notif-time">${n.time}</div></div>`; 
+                
+                item.onclick = () => { 
+                    document.getElementById('notification-modal').style.display='none'; 
+                    // 修正: スカウト通知ならスカウト画面へ遷移
+                    if(n.type === 'scout') {
+                        menuAction('scout-screen');
+                    } else if(n.isPost && n.targetId) {
+                        openDetail(n.targetId); 
+                    }
+                }; 
+                list.appendChild(item); 
+            }); 
+            modal.style.display = 'flex'; 
+        }
         function verifyCompanyCode(){ if(document.getElementById('company-code-input').value==='123'){ isCompanyMode=true; companyId='CORP123'; alert("参加しました"); document.getElementById('company-code-modal').style.display='none'; refreshApp(); } else alert("無効です"); }
         function logout(){ sessionStorage.removeItem('closer_logged_in_user'); location.reload(); }
         function requestAccountDeletion(){ localStorage.removeItem('closer_data_users'); location.reload(); }
@@ -1812,9 +1837,29 @@
             showRatingResult(ans);
             alert("評価を送信しました！スコアを表示します。");
         }  
+        /* --- 企業とのチャット開始用 --- */
+        function startChatWithCompany(companyName) {
+            // ダミーユーザーとして企業を登録（存在しない場合）
+            if(!dummyUsers[companyName]) {
+                dummyUsers[companyName] = { 
+                    name: companyName, 
+                    role: 'Recruiter', 
+                    rate: '---', 
+                    img: '', 
+                    bio: '採用担当です。', 
+                    isAnonymous: false,
+                    mySubActive: false // 企業はサブスク不要でチャット可能とする
+                };
+            }
+            
+            // プロフィールを開いてチャットタブへ切り替え
+            openProfile(companyName);
+            switchProfileTab('chat');
+        }
     </script>
 </body>
 </html>
+
 
 
 
