@@ -1185,7 +1185,7 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
         let selectedProductTags = [];
         let currentProfileTab = 'posts';
         let viewingProfileUser = null;
-        let isCuriousView = false; // ★これを追加
+        let isCuriousView = false;
         let navHistory = [];
         let scrollPositions = {};
 
@@ -1200,7 +1200,7 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
             if(savedUserSession) {
                 const u = JSON.parse(savedUserSession);
                 if(dummyUsers[u.name]) {
-                    loginSuccess(u); // ここでアイコン反映
+                    loginSuccess(u); 
                 } else {
                     startAsGuest();
                 }
@@ -1222,7 +1222,6 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
         }
 
         function refreshApp() {
-            // calculateAllUserRates(); // 削除: 定義されていない関数のためエラーの原因となる
             const current = document.querySelector('.screen.active');
             if(current) {
                 if(current.id === 'timeline-screen') renderTimeline(isCuriousView);
@@ -1230,9 +1229,8 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
                 if(current.id === 'user-ranking-screen') renderUserRanking();
                 if(current.id === 'detail-screen') renderAnswers(currentPostId);
                 if(current.id === 'bookmarks-screen') renderBookmarks();
-                if(current.id === 'profile-screen') openProfile(viewingProfileUser || 'me'); // リロード時も維持
+                if(current.id === 'profile-screen') openProfile(viewingProfileUser || 'me');
             }
-            // アイコン更新（修正1）
             const myName = isGuest ? '' : JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
             if(!isGuest && dummyUsers[myName] && dummyUsers[myName].img) {
                 document.getElementById('menu-icon-img').src = dummyUsers[myName].img;
@@ -1259,7 +1257,6 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
             if(screenId === 'user-ranking-screen') renderUserRanking();
             if(screenId === 'ranking-screen') renderRanking();
             if(screenId === 'ai-practice-screen') loadAIScenarios();
-            // 設定画面を開くときにトグル状態を反映
             if(screenId === 'settings-screen') loadSettingsToggles();
         }
 
@@ -1280,12 +1277,10 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
             if(scrollPositions[screenId]) next.scrollTop = scrollPositions[screenId];
         }
 
-        // --- 修正1: 画像反映 (loginSuccess) ---
         function loginSuccess(u){ 
             isGuest=false; 
             sessionStorage.setItem('closer_logged_in_user', JSON.stringify(u)); 
             document.getElementById('menu-username').innerText=u.name; 
-            // サイドバーアイコン更新
             if(u.img) {
                 document.getElementById('menu-icon-img').src = u.img;
                 document.getElementById('menu-icon-img').style.display = 'block';
@@ -1295,7 +1290,6 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
             navTo('timeline-screen'); 
         }
 
-        // --- 修正2: 「気になる」リストの適正化 ---
         function toggleCurious(postId) {
             if(isGuest) { alert("ログインが必要です"); return navTo('auth-screen'); }
             const myName = JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
@@ -1307,14 +1301,14 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
             if(idx === -1) {
                 dummyUsers[myName].curiousItems.push(postId);
                 post.curiousCount++;
-                post.isCurious = true; // 表示用フラグ（簡易）
+                post.isCurious = true; 
             } else {
                 dummyUsers[myName].curiousItems.splice(idx, 1);
                 post.curiousCount--;
                 post.isCurious = false;
             }
             saveData();
-            refreshApp(); // リストから即座に消える（renderTimelineのフィルタが効く）
+            refreshApp();
         }
 
         function showCuriousList(){ 
@@ -1322,12 +1316,10 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
             const list = document.getElementById('timeline-list');
             list.innerHTML = '';
             document.getElementById('timeline-title').innerText = "気になるリスト";
-            // 修正2: 引数でフラグを渡してフィルタリング
             renderTimeline(true); 
             navTo('timeline-screen'); 
         }
 
-        // --- 修正4: 通知設定の保存 ---
         function saveConfig() {
             if(isGuest) return;
             const myName = JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
@@ -1354,13 +1346,11 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
             document.getElementById('conf-admin').checked = c.admin || false;
         }
 
-        // --- 修正5: サブスク・プロフィールタブ・チャット ---
-       function openProfile(userId) {
+        function openProfile(userId) {
             let u;
             const myName = isGuest ? '' : JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
             viewingProfileUser = userId === 'me' ? myName : userId;
 
-            // ゲストが「自分(me)」を開こうとした時だけログインへ誘導
             if(userId === 'me' && isGuest) {
                 return navTo('auth-screen');
             }
@@ -1392,8 +1382,23 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
             const actionArea = document.getElementById('prof-action-area');
             actionArea.innerHTML = '';
             
-            // サブスクボタンの表示判定
-            if(!u.isAnonymous && userId !== 'me' && u.mySubActive) {
+            // スカウト情報の表示
+            const isMe = (userId === 'me' || userId === myName);
+            const isRecruiter = isCompanyMode;
+
+            if((isMe || isRecruiter) && u.scoutInfo) {
+                const scoutDiv = document.createElement('div');
+                scoutDiv.style.cssText = "background:#111; border:1px solid var(--company); padding:15px; border-radius:8px; margin-top:15px; text-align:left; font-size:13px;";
+                scoutDiv.innerHTML = `
+                    <div style="color:var(--company); font-weight:bold; margin-bottom:5px;">🏢 ${isMe ? '企業へのアピール' : 'スカウト用データ'}</div>
+                    <div><span style="color:#888;">意欲:</span> ${u.scoutInfo.status || '-'}</div>
+                    <div><span style="color:#888;">年収:</span> 現 ${u.scoutInfo.currentSalary||'-'}万 / 希 ${u.scoutInfo.desiredSalary||'-'}万</div>
+                    <div style="margin-top:5px; color:#ccc; white-space:pre-wrap; border-top:1px dashed #333; padding-top:5px;">${u.scoutInfo.achievements || '実績入力なし'}</div>
+                `;
+                actionArea.appendChild(scoutDiv);
+            }
+            
+            if(!u.isAnonymous && !isMe && u.mySubActive) {
                 const mySubs = (dummyUsers[myName] && dummyUsers[myName].subscriptions) ? dummyUsers[myName].subscriptions : [];
                 const isSubscribed = mySubs.includes(dummyUsers[userId].name);
                 
@@ -1413,7 +1418,7 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
                 }
             }
             
-            if(userId === 'me') {
+            if(isMe) {
                 document.getElementById('prof-coin-display').style.display = 'block';
                 document.getElementById('prof-coin-display').innerText = `🪙 ${u.coins} Coins`;
             } else {
@@ -1436,17 +1441,16 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
             area.innerHTML = '';
             const myName = isGuest ? '' : JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
             const isMe = (targetUserId === myName);
-            // サブスク判定
+            
             const isSubscribed = isMe || (dummyUsers[myName].subscriptions && dummyUsers[myName].subscriptions.includes(targetUserId));
 
             if(currentProfileTab === 'posts') {
-                // 投稿一覧（サブスク限定含む）
-                const userPosts = dummyAnswers.filter(a => a.user === targetUserId); // 本来は"投稿"だが仕様上AnswerがコンテンツなのでAnswerを表示
+                const userPosts = dummyAnswers.filter(a => a.user === targetUserId);
                 userPosts.forEach(ans => {
                     const div = document.createElement('div');
                     div.className = 'answer-card';
                     let content = ans.text;
-                    // ぼかし処理
+                    
                     if(ans.isPremium && !isSubscribed) {
                         div.innerHTML = `<div class="blur-content">${content}</div><div style="text-align:center; color:var(--accent); font-size:12px; position:absolute; top:50%; left:50%; transform:translate(-50%, -50%);">🔒 サブスク限定</div>`;
                         div.style.position = 'relative';
@@ -1456,11 +1460,9 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
                     area.appendChild(div);
                 });
             } else if(currentProfileTab === 'chat') {
-                // チャット
                 const container = document.createElement('div');
                 container.className = 'dm-container';
                 
-                // ロックを解除し、常にUIを表示
                 container.innerHTML = `
                     <div id="dm-history" style="flex:1; padding:10px; overflow-y:auto; display:flex; flex-direction:column; gap:10px;">
                         <div style="background:#333; padding:10px; border-radius:12px; align-self:flex-start; max-width:80%; font-size:14px;">
@@ -1489,29 +1491,24 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
             }
         }
 
-        // --- 修正6: お問い合わせタイプ選択 ---
         function selectContactType(btn) {
             document.querySelectorAll('#contact-screen .btn-outline').forEach(b => b.style.borderColor = 'var(--text-sub)');
             btn.style.borderColor = 'var(--accent)';
             btn.style.color = 'var(--accent)';
         }
 
-        // 既存関数群の微修正（renderTimelineのフィルタなど）
         function renderTimeline(showCuriousListMode = false, searchKeyword = null) {
             const list = document.getElementById('timeline-list');
             list.innerHTML = '';
             if(!showCuriousListMode) document.getElementById('timeline-title').innerText = "新着の悩み";
             
             const myName = isGuest ? '' : JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
-            // 修正2: 自分のリストに基づくフィルタ
             const myCuriousIds = (dummyUsers[myName] && dummyUsers[myName].curiousItems) ? dummyUsers[myName].curiousItems : [];
 
             let filteredPosts = dummyPosts.filter(p => {
                 if(isCompanyMode && p.companyId !== 'CORP123') return false; 
                 if(!isCompanyMode && p.companyId !== null) return false;
-                // 修正2: フラグではなくリストに含まれるかで判定
                 if(showCuriousListMode && !myCuriousIds.includes(p.id)) return false;
-                
                 if(currentFilters.length > 0 && !p.tags.some(tag => currentFilters.includes(tag))) return false;
                 if(searchKeyword) {
                     const k = searchKeyword.toLowerCase();
@@ -1520,7 +1517,6 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
                 return true;
             });
 
-            // ソート
             if(currentSort === 'popular') filteredPosts.sort((a,b) => b.curiousCount - a.curiousCount);
             if(currentSort === 'unanswered') filteredPosts = filteredPosts.filter(p => !dummyAnswers.some(a => a.postId === p.id));
             
@@ -1537,7 +1533,7 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
                 }
                 
                 const isMe = (p.userId === myName);
-                const isCurious = myCuriousIds.includes(p.id); // 自分の状態
+                const isCurious = myCuriousIds.includes(p.id);
                 const curiousClick = isMe ? "event.stopPropagation(); alert('自分の投稿です');" : `event.stopPropagation(); toggleCurious(${p.id})`;
                 const curiousClass = isMe ? "action-item disabled" : `action-item ${isCurious?'active':''}`;
 
@@ -1554,13 +1550,11 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
             });
         }
 
-        // --- その他の必須関数 ---
         function checkDeviceAndSendCode() {
             const email = document.getElementById('reg-email').value;
             if(!email) return alert("メールアドレスを入力してください");
             if(localStorage.getItem('closer_device_registered')) { alert("この端末は既に登録されています。ログイン画面へ移動します。"); switchAuthTab('login'); return; }
             generatedAuthCode = Math.floor(1000 + Math.random() * 9000).toString();
-            console.log("Debug Code:", generatedAuthCode);
             const btn = event.target; const originalText = btn.innerText; btn.innerText = "送信中..."; btn.disabled = true;
             emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, { to_email: email, code: generatedAuthCode })
             .then(() => { alert(`認証コードを送信しました。メールを確認してください。`); document.getElementById('reg-step-1').style.display = 'none'; document.getElementById('reg-step-2').style.display = 'block'; }, 
@@ -1576,11 +1570,9 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
             const passVal = document.getElementById('login-pass').value;
             const users = Object.values(dummyUsers); 
             
-            // 修正: 入力されたメール または 名前 が完全に一致するユーザーを探す
             const u = users.find(u => (u.email === inputVal || u.name === inputVal) && u.name !== 'Guest'); 
             
             if(u) {
-                // パスワードが設定されている場合はチェックする
                 if(u.password && u.password !== passVal) {
                     return alert("パスワードが違います");
                 }
@@ -1592,7 +1584,6 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
         function startAsGuest(){ isGuest=true; sessionStorage.removeItem('closer_logged_in_user'); refreshApp(); navTo('timeline-screen'); }
         function renderTags(elementId, isSelectable = false) { const container = document.getElementById(elementId); container.innerHTML = ''; products.forEach(p => { const tag = document.createElement('div'); tag.className = 'choice-tag'; tag.innerText = p; if(isSelectable) { tag.onclick = function() { this.classList.toggle('selected'); if(elementId === 'product-tags') { if(this.classList.contains('selected')) selectedProductTags.push(p); else selectedProductTags = selectedProductTags.filter(t => t !== p); } }; } container.appendChild(tag); }); }
         
-        // MISSING FUNCTIONS ADDED BELOW
         function renderFilterTags() {
             const container = document.getElementById('filter-tags-container');
             container.innerHTML = '';
@@ -1647,16 +1638,12 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
             });
         }
 
-      /* --- 修正版: サブスク解除・加入ロジック --- */
         function unlockUserSub(targetUser) {
-            // メッセージを変更し、分岐処理を追加
             if(confirm(`${targetUser}さんのサブスク加入者限定です。加入しますか？`)) {
                 if(isGuest) {
-                    // 未ログイン -> ログイン画面へ
                     return navTo('auth-screen');
                 }
                 
-                // ログイン済み -> 決済確認へ
                 const cost = dummyUsers[targetUser].mySubPrice;
                 const myName = JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
                 
@@ -1672,7 +1659,7 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
                     dummyUsers[myName].subscriptions.push(targetUser);
                     saveData();
                     alert("加入しました！");
-                    openProfile(targetUser); // プロフィールへ移動してコンテンツを表示
+                    openProfile(targetUser); 
                 }
             }
         }
@@ -1696,7 +1683,6 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
                 let content = ''; 
                 
                 if(ans.isPremium && !isUnlocked) { 
-                    // ロック表示
                     content = `<div class="blur-content">${ans.text}</div><div class="locked-overlay"><span style="font-size:30px;">🔒</span><button class="btn btn-premium" style="width:auto; margin-top:10px; font-size:12px; padding:5px 15px;" onclick="event.stopPropagation(); unlockUserSub('${ans.user}')">解除</button></div>`; 
                 } else { 
                     content = `<div class="answer-body">${ans.text}</div><div class="answer-reason">💡 ${ans.reason}</div>`; 
@@ -1725,11 +1711,8 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
 
             const myName = isGuest ? '' : JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
             
-            // プレミアム回答のロック判定
             if(ans.isPremium) {
                 if(isGuest || (ans.user !== myName && (!dummyUsers[myName].subscriptions || !dummyUsers[myName].subscriptions.includes(ans.user)))) {
-                    
-                    // サブスク誘導ポップアップ
                     if(confirm(`${ans.user}さんのサブスク加入者限定です。加入しますか？`)) {
                         if(isGuest) {
                             navTo('auth-screen');
@@ -1771,7 +1754,6 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
                 
                 item.onclick = () => { 
                     document.getElementById('notification-modal').style.display='none'; 
-                    // ★修正: スカウト通知ならスカウト画面へ遷移
                     if(n.type === 'scout') {
                         navTo('scout-screen');
                     } else if(n.isPost && n.targetId) {
@@ -1790,8 +1772,6 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
         function openRatingModal() { document.getElementById('answer-detail-modal').style.display = 'none'; document.getElementById('rating-modal').style.display = 'flex'; }
         function updateRateVal(type, val) { document.getElementById('val-'+type).innerText = val; }
         function submitDetailRating() { alert("評価を送信しました"); document.getElementById('rating-modal').style.display = 'none'; }
-        
-        /* --- 修正版: 回答保存（ゲスト対応） --- */
         function toggleSaveAnswer(ansId) {
             if(isGuest) { alert("保存機能を使うにはログインが必要です"); return navTo('auth-screen'); }
             
@@ -1804,7 +1784,6 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
             saveData(); 
             refreshApp(); 
         }
-
         function deletePost(id){ if(!confirm("削除?"))return; dummyPosts=dummyPosts.filter(p=>p.id!==id); saveData(); refreshApp(); }
         function deleteAnswer(id){ if(!confirm("削除?"))return; dummyAnswers=dummyAnswers.filter(a=>a.id!==id); saveData(); refreshApp(); }
         function openPostModal(){ document.getElementById('post-modal').style.display='flex'; }
@@ -1812,11 +1791,11 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
         function openWalletModal(){ document.getElementById('wallet-modal').style.display='flex'; }
         function openSystemPlanModal(){ document.getElementById('system-plan-modal').style.display='flex'; }
         function openCreatorModal(){ document.getElementById('creator-modal').style.display='flex'; }
+        
         function openProfileEdit() {
             const myName = JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
             const u = dummyUsers[myName];
 
-            // 既存データのセット
             document.getElementById('edit-name').value = u.name || '';
             document.getElementById('edit-email').value = u.email || '';
             document.getElementById('edit-history').value = u.history || '';
@@ -1834,7 +1813,6 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
                 document.getElementById('edit-avatar-preview').style.display = 'none';
             }
 
-            // ★追加: スカウト情報のセット
             if(u.scoutInfo) {
                 document.getElementById('edit-status').value = u.scoutInfo.status || '';
                 document.getElementById('edit-salary-current').value = u.scoutInfo.currentSalary || '';
@@ -1849,7 +1827,6 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
             const myName = JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
             const u = dummyUsers[myName];
             
-            // 基本情報の保存
             const newName = document.getElementById('edit-name').value;
             if(newName) u.name = newName;
             u.history = document.getElementById('edit-history').value;
@@ -1864,7 +1841,6 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
             const imgSrc = document.getElementById('edit-avatar-img').src;
             if(imgSrc && imgSrc !== window.location.href) u.img = imgSrc;
             
-            // ★追加: スカウト用情報の保存
             if(!u.scoutInfo) u.scoutInfo = {};
             u.scoutInfo.status = document.getElementById('edit-status').value;
             u.scoutInfo.currentSalary = document.getElementById('edit-salary-current').value;
@@ -1878,20 +1854,29 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
             backToPrev();
             refreshApp();
         }
-        
-        function openReplyInput(ansId) {
-            const inputArea = document.getElementById('reply-input-' + ansId);
-            if(inputArea.style.display === 'none') {
-                inputArea.style.display = 'flex';
-            } else {
-                inputArea.style.display = 'none';
-            }
-        }
 
-        /* --- 修正版: 返信送信（ゲスト対応） --- */
-        function submitReply(ansId) {
+        function previewEditImage(input){ if (input.files && input.files[0]) { const reader = new FileReader(); reader.onload = function(e) { document.getElementById('edit-avatar-preview').style.display = 'none'; document.getElementById('edit-avatar-img').src = e.target.result; document.getElementById('edit-avatar-img').style.display = 'block'; }; reader.readAsDataURL(input.files[0]); } }
+        function submitPost(){ const t=document.getElementById('post-content').value; dummyPosts.unshift({id:Date.now(), title:t, tags:['その他'], time:'Now', curiousCount:0, userId:JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name, companyId:null, isCurious: false}); saveData(); refreshApp(); document.getElementById('post-modal').style.display='none'; }
+        function submitAnswer(){ 
+            const t=document.getElementById('answer-content').value; 
+            if(!t) return;
+            const myName = isGuest ? 'Guest' : JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
+            dummyAnswers.push({
+                id:Date.now(), 
+                postId:currentPostId, 
+                user:myName, 
+                text:t, 
+                reason:document.getElementById('answer-reason').value, 
+                votes:{}, 
+                isPremium:false, 
+                replies:[]
+            }); 
+            saveData(); 
+            refreshApp(); 
+            document.getElementById('answer-modal').style.display='none'; 
+        }
+        function submitReply(ansId){ 
             if(isGuest) { alert("返信するにはログインが必要です"); return navTo('auth-screen'); }
-            
             const txtInput = document.getElementById('reply-text-' + ansId);
             const txt = txtInput.value;
             if(!txt) return;
@@ -1903,10 +1888,183 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
             refreshApp();
             alert("返信しました");
         }
+        function openReplyInput(ansId){ 
+            const inputArea = document.getElementById('reply-input-' + ansId);
+            if(inputArea.style.display === 'none') {
+                inputArea.style.display = 'flex';
+            } else {
+                inputArea.style.display = 'none';
+            }
+        }
 
-        /* --- 回答詳細・評価ロジック（上書き定義） --- */
+        function menuAction(screenId, isProfile=false) {
+            if(document.getElementById('side-menu').classList.contains('open')) toggleMenu();
+            if(isProfile) {
+                if(isGuest) { alert("ログインが必要です"); return navTo('auth-screen'); }
+                const myName = JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
+                openProfile(myName);
+            } else {
+                if(screenId === 'timeline-screen') isCuriousView = false;
+                navTo(screenId);
+            }
+        }
+
+        function checkMemberAccess(screenId, type) {
+            if(isGuest) {
+                alert("会員限定機能です。ログインまたは登録してください。");
+                return navTo('auth-screen');
+            }
+            if(type === 'company') {
+                document.getElementById('company-code-modal').style.display = 'flex';
+                toggleMenu();
+                return;
+            }
+            if(type === 'post') {
+                openPostModal();
+                return;
+            }
+            if(screenId) {
+                if(document.getElementById('side-menu').classList.contains('open')) toggleMenu();
+                navTo(screenId);
+            }
+        }
+
+        function openDetail(postId) {
+            currentPostId = postId;
+            const p = dummyPosts.find(x => x.id === postId);
+            if(!p) return;
+            document.getElementById('detail-title').innerText = p.title;
+            const ctxDiv = document.getElementById('detail-context');
+            ctxDiv.innerText = p.context;
+            ctxDiv.style.display = p.context ? 'block' : 'none';
+            document.getElementById('detail-tags').innerHTML = p.tags.map(t=>`<span class="tag">${t}</span>`).join('');
+            renderAnswers(postId);
+            navTo('detail-screen');
+        }
+
+        function renderRanking() {
+            const list = document.getElementById('ranking-list');
+            list.innerHTML = '';
+            const sorted = [...dummyPosts].sort((a,b) => b.curiousCount - a.curiousCount);
+            sorted.forEach((p, idx) => {
+                if(idx >= 10) return;
+                const div = document.createElement('div');
+                div.className = 'user-card';
+                div.innerHTML = `<div class="user-card-left"><div class="user-rank-num ${idx<3?'top3':''}">${idx+1}</div><div><div style="font-weight:bold;">${p.title}</div><div style="font-size:12px; color:#888;">🤔 ${p.curiousCount} Curious</div></div></div>`;
+                div.onclick = () => openDetail(p.id);
+                list.appendChild(div);
+            });
+        }
+
+        function renderUserRanking() {
+            calculateAllUserRates();
+            const list = document.getElementById('user-ranking-list');
+            list.innerHTML = '';
+            const users = Object.values(dummyUsers).filter(u => u.name !== 'Guest');
+            users.sort((a,b) => parseFloat(b.rate) - parseFloat(a.rate));
+            users.forEach((u, idx) => {
+                const div = document.createElement('div');
+                div.className = 'user-card';
+                div.innerHTML = `<div class="user-card-left"><div class="user-rank-num ${idx<3?'top3':''}">${idx+1}</div><img src="${u.img||''}" class="user-mini-icon" style="width:30px;height:30px;"><div><div style="font-weight:bold;">${u.name}</div><div style="font-size:11px; color:#888;">${u.role}</div></div></div><div class="user-score">${u.rate}</div>`;
+                div.onclick = () => openProfile(u.name);
+                list.appendChild(div);
+            });
+        }
+
+        function calculateAllUserRates() {
+            Object.values(dummyUsers).forEach(u => {
+                let score = 0;
+                const myAnswers = dummyAnswers.filter(a => a.user === u.name);
+                if(myAnswers.length > 0) {
+                    const totalVotes = myAnswers.reduce((acc, cur) => {
+                        let voteSum = 0;
+                        if(cur.votes) {
+                            for(let k in cur.votes) voteSum += parseInt(k) * cur.votes[k];
+                        }
+                        return acc + voteSum;
+                    }, 0);
+                    score = (totalVotes / myAnswers.length).toFixed(2);
+                }
+                u.rate = score;
+            });
+        }
+
+        function renderBookmarks() {
+            const list = document.getElementById('bookmarks-list');
+            list.innerHTML = '';
+            const myName = isGuest ? '' : JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
+            if(isGuest) return;
+            const savedIds = dummyUsers[myName].savedAnswers || [];
+            document.getElementById('bookmark-count').innerText = `${savedIds.length} items`;
+            
+            savedIds.forEach(id => {
+                const ans = dummyAnswers.find(a => a.id === id);
+                if(ans) {
+                    const div = document.createElement('div');
+                    div.className = 'answer-card';
+                    div.innerHTML = `<div class="answer-header"><div class="answer-author">${ans.user}</div></div><div class="answer-body">${ans.text}</div><button class="btn-sm btn-outline" onclick="openDetail(${ans.postId})">元の投稿を見る</button>`;
+                    list.appendChild(div);
+                }
+            });
+        }
+
+        function sendAIMessage() {
+            const input = document.getElementById('ai-chat-input');
+            const txt = input.value;
+            if(!txt) return;
+            const area = document.getElementById('ai-chat-area');
+            area.innerHTML += `<div class="chat-bubble bubble-user">${txt}</div>`;
+            input.value = '';
+            area.scrollTop = area.scrollHeight;
+            setTimeout(() => {
+                const replies = ["なるほど、それで？", "高いね。", "検討します。", "興味ないかな。", "他社と比較してるんだよね。"];
+                const r = replies[Math.floor(Math.random()*replies.length)];
+                area.innerHTML += `<div class="chat-bubble bubble-ai">${r}</div>`;
+                area.scrollTop = area.scrollHeight;
+            }, 1000);
+        }
+
+        function initiateCoinPurchase(coins, price) {
+            pendingPayment = { coins, price };
+            document.getElementById('wallet-modal').style.display='none';
+            document.getElementById('pay-amount').innerText = price;
+            document.getElementById('payment-gateway-modal').style.display='flex';
+        }
+
+        function processPaymentMock(method) {
+            if(!pendingPayment) return;
+            const myName = JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
+            dummyUsers[myName].coins += pendingPayment.coins;
+            saveData();
+            alert(`決済完了: ${method}\n${pendingPayment.coins}コインを追加しました。`);
+            document.getElementById('payment-gateway-modal').style.display='none';
+            refreshApp();
+        }
+
+        function subscribeSystem(plan, price) {
+            const myName = JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
+            if(dummyUsers[myName].coins < price) return alert("コイン不足です");
+            if(confirm("プラン変更しますか？")) {
+                dummyUsers[myName].coins -= price;
+                dummyUsers[myName].plan = plan;
+                if(plan !== 'standard') dummyUsers[myName].isPro = true;
+                saveData();
+                alert("変更しました");
+                document.getElementById('system-plan-modal').style.display='none';
+                refreshApp();
+            }
+        }
+
+        function saveCreatorSettings() {
+            const myName = JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
+            dummyUsers[myName].mySubPrice = document.getElementById('creator-price').value;
+            dummyUsers[myName].mySubActive = document.getElementById('creator-status').value === 'on';
+            saveData();
+            alert("保存しました");
+            document.getElementById('creator-modal').style.display='none';
+        }
+
         let currentViewingAnswerId = null;
-
         function showRatingInput() {
             document.getElementById('rating-input-area').style.display = 'block';
             document.getElementById('rating-result-area').style.display = 'none';
@@ -1951,10 +2109,9 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
             saveData();
             showRatingResult(ans);
             alert("評価を送信しました！スコアを表示します。");
-        }  
-        /* --- 企業とのチャット開始用 --- */
+        }
+
         function startChatWithCompany(companyName) {
-            // ダミーユーザーとして企業を登録（チャット画面表示のため）
             if(!dummyUsers[companyName]) {
                 dummyUsers[companyName] = { 
                     name: companyName, 
@@ -1963,18 +2120,50 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
                     img: '', 
                     bio: '採用担当です。', 
                     isAnonymous: false,
-                    mySubActive: false, // 企業はサブスク不要
+                    mySubActive: false, 
                     subscriptions: []
                 };
             }
-            
-            // プロフィールを開いてからチャットタブへ切り替え
             openProfile(companyName);
             switchProfileTab('chat');
+        }
+
+        function checkAndSendDM(targetUser) {
+            if(isGuest) { alert("ログインが必要です"); return navTo('auth-screen'); }
+
+            const myName = JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
+            const target = dummyUsers[targetUser];
+
+            const isSubscribed = (targetUser === myName) || 
+                                 (dummyUsers[myName].subscriptions && dummyUsers[myName].subscriptions.includes(targetUser));
+            
+            if (target && target.mySubActive && !isSubscribed) {
+                if(confirm(`メッセージを送るにはサブスクリプションへの加入が必要です。\n\n${targetUser}のプランに加入しますか？`)) {
+                    unlockUserSub(targetUser);
+                }
+                return;
+            }
+
+            const input = document.getElementById('dm-input');
+            const txt = input.value;
+            if(!txt) return;
+            
+            const history = document.getElementById('dm-history');
+            history.innerHTML += `<div style="background:var(--accent); color:#000; padding:10px; border-radius:12px; align-self:flex-end; max-width:80%; font-size:14px; font-weight:bold;">${txt}</div>`;
+            input.value = '';
+            history.scrollTop = history.scrollHeight;
+            
+            setTimeout(() => {
+                history.innerHTML += `<div style="background:#333; padding:10px; border-radius:12px; align-self:flex-start; max-width:80%; font-size:14px;">(自動応答) ご連絡ありがとうございます。確認いたします。</div>`;
+                history.scrollTop = history.scrollHeight;
+            }, 1000);
         }
     </script>
 </body>
 </html>
+</body>
+</html>
+
 
 
 
