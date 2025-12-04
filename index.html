@@ -1649,17 +1649,12 @@
                 }, 1000);
             }
         }
-        /* --- 回答詳細・評価ロジック（上書き定義） --- */
+       /* --- 回答詳細・評価ロジック（上書き定義） --- */
     
     // 現在表示中の回答IDを保持
     let currentViewingAnswerId = null;
 
     // 既存のモーダルではなく、新画面へ遷移させる
-    /* --- 修正版: 回答詳細表示ロジック --- */
-    openAnswerDetail = function(ansId) {
-        currentViewingAnswerId = ansId;
-        const ans = dummyAnswers.find(a => a.id === ansId);
-        /* --- 修正版: 回答詳細表示ロジック --- */
     openAnswerDetail = function(ansId) {
         currentViewingAnswerId = ansId;
         const ans = dummyAnswers.find(a => a.id === ansId);
@@ -1672,7 +1667,7 @@
             // 未加入（ゲスト含む）の場合
             if(isGuest || (ans.user !== myName && (!dummyUsers[myName].subscriptions || !dummyUsers[myName].subscriptions.includes(ans.user)))) {
                 
-                // ★修正: メッセージ変更と遷移ロジック
+                // メッセージ変更と遷移ロジック
                 if(confirm(`${ans.user}さんのサブスクに加入で閲覧可能です。加入しますか？`)) {
                     if(isGuest) {
                         // 未ログイン -> ログイン画面へ
@@ -1686,16 +1681,22 @@
             }
         }
 
-        // 以下、表示処理
+        // 画面に値をセット
         document.getElementById('view-ans-text').innerText = ans.text;
         document.getElementById('view-ans-reason').innerText = ans.reason || '（記載なし）';
 
+        // 自分が既に評価済みかチェック
         const u = dummyUsers[myName] || {};
         if(!u.votedAnswers) u.votedAnswers = [];
+        
+        // 自分の回答、または既に評価済みなら結果を表示
         const hasVoted = u.votedAnswers.includes(ansId) || ans.user === myName;
 
-        if(hasVoted) showRatingResult(ans);
-        else showRatingInput();
+        if(hasVoted) {
+            showRatingResult(ans);
+        } else {
+            showRatingInput();
+        }
 
         navTo('answer-view-screen');
     };
@@ -1764,10 +1765,11 @@
         // 結果表示へ切り替え
         showRatingResult(ans);
         alert("評価を送信しました！スコアを表示します。");
-    }
+    } 
     </script>
 </body>
 </html>
+
 
 
 
