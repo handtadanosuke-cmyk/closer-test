@@ -1039,7 +1039,7 @@
 
         // --- 修正2: 「気になる」リストの適正化 ---
         function toggleCurious(postId) {
-            if(isGuest) return alert("ログインが必要です");
+            if(isGuest) { alert("ログインが必要です"); return navTo('auth-screen'); }
             const myName = JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
             const post = dummyPosts.find(p => p.id === postId);
             
@@ -1419,7 +1419,7 @@
         function menuAction(screenId, isProfile=false) {
             if(document.getElementById('side-menu').classList.contains('open')) toggleMenu();
             if(isProfile) {
-                if(isGuest) return alert("ログインが必要です");
+                if(isGuest) { alert("ログインが必要です"); return navTo('auth-screen'); }
                 const myName = JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
                 openProfile(myName);
             } else {
@@ -1618,7 +1618,7 @@
             alert("返信しました");
         }
         function checkAndSendDM(targetUser) {
-            if(isGuest) return alert("ログインが必要です");
+            if(isGuest) { alert("ログインが必要です"); return navTo('auth-screen'); }
 
             const myName = JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
             // サブスク加入済みかチェック（自分自身含む）
@@ -1727,7 +1727,7 @@
 
     // 評価送信処理
     function submitNewRating() {
-        if(isGuest) return alert("評価するにはログインが必要です");
+        if(isGuest) { alert("評価するにはログインが必要です"); return navTo('auth-screen'); }
 
         const logic = parseInt(document.getElementById('new-rate-logic').value);
         const tone = parseInt(document.getElementById('new-rate-tone').value);
@@ -1756,6 +1756,7 @@
     </script>
 </body>
 </html>
+
 
 
 
