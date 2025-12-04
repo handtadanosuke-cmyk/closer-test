@@ -704,8 +704,12 @@
         </div>
         <div style="padding:20px;">
             <p style="text-align:center;">プロフィール写真</p>
-            <div class="avatar-uploader" onclick="document.getElementById('edit-file-input').click()"><div id="edit-avatar-preview" class="placeholder">📷</div><img id="edit-avatar-img" src="" style="display:none;"></div>
+            <div class="avatar-uploader" onclick="document.getElementById('edit-file-input').click()">
+                <div id="edit-avatar-preview" class="placeholder">📷</div>
+                <img id="edit-avatar-img" src="" style="display:none;">
+            </div>
             <input type="file" id="edit-file-input" accept="image/*" style="display:none;" onchange="previewEditImage(this)">
+            
             <input type="text" id="edit-name" placeholder="名前">
             <input type="email" id="edit-email" disabled style="background:#333; color:#777;">
             <input type="text" id="edit-history" placeholder="社歴">
@@ -716,7 +720,39 @@
             <input type="text" id="edit-twitter" placeholder="X (Twitter) ID">
             <input type="text" id="edit-insta" placeholder="Instagram ID">
             <input type="text" id="edit-threads" placeholder="Threads ID">
-  </div>
+
+            <div style="margin-top:30px; padding:15px; background:#111; border:1px solid var(--company); border-radius:12px;">
+                <div style="font-size:14px; font-weight:bold; color:var(--company); margin-bottom:10px;">🏢 企業向け非公開データ</div>
+                <p style="font-size:10px; color:#888; margin-bottom:15px;">※この項目はスカウト権限を持つ企業担当者のみ閲覧できます。</p>
+                
+                <div style="margin-bottom:15px;">
+                    <label style="font-size:12px; color:#ccc; display:block; margin-bottom:5px;">転職意欲</label>
+                    <select id="edit-status" style="width:100%; padding:10px; background:#222; border:1px solid #444; color:#fff; border-radius:8px;">
+                        <option value="">未設定</option>
+                        <option value="今すぐ転職したい">今すぐ転職したい</option>
+                        <option value="良い話があれば">良い話があれば</option>
+                        <option value="情報収集中">情報収集中</option>
+                        <option value="検討していない">検討していない</option>
+                    </select>
+                </div>
+
+                <div style="display:flex; gap:10px; margin-bottom:15px;">
+                    <div style="flex:1;">
+                        <label style="font-size:12px; color:#ccc; display:block; margin-bottom:5px;">現年収 (万円)</label>
+                        <input type="number" id="edit-salary-current" placeholder="例: 450" style="margin-bottom:0;">
+                    </div>
+                    <div style="flex:1;">
+                        <label style="font-size:12px; color:#ccc; display:block; margin-bottom:5px;">希望年収 (万円)</label>
+                        <input type="number" id="edit-salary-desire" placeholder="例: 550" style="margin-bottom:0;">
+                    </div>
+                </div>
+
+                <label style="font-size:12px; color:#ccc; display:block; margin-bottom:5px;">主な実績・アピール</label>
+                <textarea id="edit-achievements" rows="4" placeholder="例：昨年度売上1.2億円（達成率120%）、新人賞受賞など。具体的な数字で書くとスカウト率が上がります。" style="background:#222; font-size:13px;"></textarea>
+            </div>
+
+            <button class="btn btn-gold" onclick="saveProfile()" style="margin-top:20px;">保存する</button>
+        </div>
     </div>
 
 
@@ -1170,11 +1206,7 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
             { id: 3, type: 'info', text: '運営からのお知らせ：新機能追加', time: '1日前', read: true, targetId: null }
         ];
         
-        const products = [
-            "不動産", "保険・金融", "通信・OA機器", "SaaS・IT", 
-            "人材", "広告・メディア", "医療・介護", "建設・リフォーム", 
-            "M&A", "士業", "太陽光・蓄電池", "その他"
-        ];
+        const products = ["不動産", "保険・金融", "通信・OA機器", "SaaS・IT", "人材", "広告・メディア", "医療・介護", "建設・リフォーム", "M&A", "士業", "太陽光・蓄電池", "その他"];
         
         let isGuest = true;
         let currentPostId = null;
@@ -1189,6 +1221,7 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
         let isCuriousView = false;
         let navHistory = [];
         let scrollPositions = {};
+        let currentViewingAnswerId = null;
 
         window.onload = function() {
             loadAllData();
@@ -1383,7 +1416,6 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
             const actionArea = document.getElementById('prof-action-area');
             actionArea.innerHTML = '';
             
-            // スカウト情報の表示
             const isMe = (userId === 'me' || userId === myName);
             const isRecruiter = isCompanyMode;
 
@@ -1488,7 +1520,7 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
                 dummyUsers[myName].subscriptions.splice(idx, 1);
                 saveData();
                 alert("退会しました");
-                openProfile(targetUser); // 再描画
+                openProfile(targetUser); 
             }
         }
 
@@ -2162,6 +2194,7 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
     </script>
 </body>
 </html>
+
 
 
 
