@@ -910,19 +910,7 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
                 <label style="font-size:12px; color:#ccc; display:block; margin-bottom:5px;">主な実績・アピール</label>
                 <textarea id="edit-achievements" rows="4" placeholder="例：昨年度売上1.2億円（達成率120%）、新人賞受賞など。具体的な数字で書くとスカウト率が上がります。" style="background:#222; font-size:13px;"></textarea>
             </div>
-            ```
-
----
-
-### ステップ2：JavaScriptの修正（保存と読み込み）
-
-ファイルの一番最後（1630行目付近〜）にある **`openProfileEdit`** と **`saveProfile`** の2つの関数を、以下の新しいコードに**すべて置き換えて**ください。
-
-※これで、画面を開いたときに保存済みのデータが表示され、修正して保存できるようになります。
-
-```javascript
-        /* --- 修正版: プロフィール編集画面を開く（データをセット） --- */
-        function openProfileEdit() {
+           function openProfileEdit() {
             const myName = JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
             const u = dummyUsers[myName];
 
@@ -944,7 +932,7 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
                 document.getElementById('edit-avatar-preview').style.display = 'none';
             }
 
-            // ★追加: スカウト情報のセット
+            // スカウト情報のセット
             if(u.scoutInfo) {
                 document.getElementById('edit-status').value = u.scoutInfo.status || '';
                 document.getElementById('edit-salary-current').value = u.scoutInfo.currentSalary || '';
@@ -955,7 +943,6 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
             navTo('profile-edit-screen');
         }
 
-        /* --- 修正版: プロフィール保存（スカウト情報対応） --- */
         function saveProfile() {
             const myName = JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
             const u = dummyUsers[myName];
@@ -975,7 +962,7 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
             const imgSrc = document.getElementById('edit-avatar-img').src;
             if(imgSrc && imgSrc !== window.location.href) u.img = imgSrc;
             
-            // ★追加: スカウト用情報の保存
+            // スカウト用情報の保存
             if(!u.scoutInfo) u.scoutInfo = {};
             u.scoutInfo.status = document.getElementById('edit-status').value;
             u.scoutInfo.currentSalary = document.getElementById('edit-salary-current').value;
@@ -989,6 +976,9 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
             backToPrev();
             refreshApp();
         }
+
+        function previewEditImage(input){ if (input.files && input.files[0]) { const reader = new FileReader(); reader.onload = function(e) { document.getElementById('edit-avatar-preview').style.display = 'none'; document.getElementById('edit-avatar-img').src = e.target.result; document.getElementById('edit-avatar-img').style.display = 'block'; }; reader.readAsDataURL(input.files[0]); } }
+       
     <div style="margin-top:20px; padding:15px; background:#1a1a1a; border:1px solid var(--company); border-radius:12px;">
                 <div style="font-size:14px; font-weight:bold; color:var(--company); margin-bottom:10px;">🏢 企業向け非公開データ</div>
                 <p style="font-size:10px; color:#888; margin-bottom:10px;">※ここはスカウト企業にのみ公開されます。</p>
@@ -2097,7 +2087,7 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
             document.getElementById('creator-modal').style.display='none';
         }
 
-        let currentViewingAnswerId = null;
+        // 削除: let currentViewingAnswerId = null;
         function showRatingInput() {
             document.getElementById('rating-input-area').style.display = 'block';
             document.getElementById('rating-result-area').style.display = 'none';
@@ -2194,6 +2184,7 @@ JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換
     </script>
 </body>
 </html>
+
 
 
 
