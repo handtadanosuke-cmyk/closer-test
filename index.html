@@ -1370,13 +1370,116 @@
             });
         }
 
-        function unlockUserSub(targetUser) { if(isGuest) return alert("会員限定です"); const cost = dummyUsers[targetUser].mySubPrice; const myName = JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name; if(dummyUsers[myName].coins < cost) { alert("コイン不足です"); openWalletModal(); return; } if(confirm(`${targetUser}のサブスク(${cost} Coins/月)に加入しますか？`)) { dummyUsers[myName].coins -= cost; if(!dummyUsers[myName].subscriptions) dummyUsers[myName].subscriptions = []; dummyUsers[myName].subscriptions.push(targetUser); saveData(); alert("加入しました！"); openProfile(targetUser); } } // 修正5: openProfileで再描画
-        function renderAnswers(postId) { /* (省略: 前回の修正と同じロジック) */ const list = document.getElementById('answer-list'); list.innerHTML = ''; const postAnswers = dummyAnswers.filter(a => a.postId === postId); const myName = isGuest ? '' : JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name; postAnswers.forEach(ans => { const div = document.createElement('div'); div.className = 'answer-card'; let isUnlocked = false; if(!isGuest) { if(ans.user === myName) isUnlocked = true; if(dummyUsers[myName].subscriptions && dummyUsers[myName].subscriptions.includes(ans.user)) isUnlocked = true; } const u = dummyUsers[ans.user] || dummyUsers['Guest']; let content = ''; if(ans.isPremium && !isUnlocked) { content = `<div class="blur-content">${ans.text}</div><div class="unlock-overlay"><span style="font-size:30px;">🔒</span><button class="btn btn-premium" style="width:auto; margin-top:10px; font-size:12px; padding:5px 15px;" onclick="event.stopPropagation(); unlockUserSub('${ans.user}')">解除</button></div>`; } else { content = `<div class="answer-body">${ans.text}</div><div class="answer-reason">💡 ${ans.reason}</div>`; } div.onclick = () => openAnswerDetail(ans.id); let repliesHtml = ''; if(ans.replies && ans.replies.length > 0) ans.replies.forEach(rep => repliesHtml += `<div class="reply-box"><div class="reply-header">↪ ${rep.user}</div><div>${rep.text}</div></div>`); const replyBtn = `<span style="font-size:11px; margin-left:10px; cursor:pointer; color:#888;" onclick="event.stopPropagation(); openReplyInput(${ans.id})">↩ 返信</span>`; const deleteBtn = (ans.user === myName) ? `<span style="font-size:11px; margin-left:10px; cursor:pointer; color:var(--danger);" onclick="event.stopPropagation(); deleteAnswer(${ans.id})">🗑️ 削除</span>` : ''; const isSaved = !isGuest && dummyUsers[myName].savedAnswers && dummyUsers[myName].savedAnswers.includes(ans.id); const saveBtn = (ans.user === myName) ? `<button class="btn-icon-sm disabled" onclick="event.stopPropagation(); alert('自分の回答です')">🔖 保存</button>` : `<button class="btn-icon-sm save ${isSaved?'saved':''}" onclick="event.stopPropagation(); toggleSaveAnswer(${ans.id})">${isSaved?'🔖 保存済':'🔖 保存'}</button>`; div.innerHTML = `<div class="answer-header"><div class="answer-author" onclick="event.stopPropagation(); openProfile('${ans.user}')">👤 ${ans.user} ${u.isPro?'<span class="pro-badge">PRO</span>':''}</div><div style="display:flex; align-items:center;">${saveBtn}${replyBtn}${deleteBtn}</div></div><div style="position:relative;">${content}</div><div id="reply-area-${ans.id}">${repliesHtml}</div><div id="reply-input-${ans.id}" style="display:none; margin-top:10px;" onclick="event.stopPropagation()"><input type="text" id="reply-text-${ans.id}" placeholder="返信を入力..." style="margin-bottom:5px;"><button class="btn btn-gold" style="padding:8px; font-size:12px;" onclick="submitReply(${ans.id})">送信</button></div>`; list.appendChild(div); }); }
-        function openAnswerDetail(ansId) { const ans = dummyAnswers.find(a => a.id === ansId); const myName = isGuest ? '' : JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name; if(ans.isPremium) { if(isGuest || (ans.user !== myName && (!dummyUsers[myName].subscriptions || !dummyUsers[myName].subscriptions.includes(ans.user)))) { return alert("ロックされています"); } } document.getElementById('answer-detail-text').innerText = ans.text; targetAnswerIdForRating = ansId; const btn = document.getElementById('btn-open-rating'); if(ans.user === myName) { btn.style.display = 'none'; } else { btn.style.display = 'block'; } document.getElementById('answer-detail-modal').style.display = 'flex'; }
+      /* --- 修正版: サブスク解除・加入ロジック --- */
+        function unlockUserSub(targetUser) {
+            // メッセージを変更し、分岐処理を追加
+            if(confirm(`${targetUser}さんのサブスク加入者限定です。加入しますか？`)) {
+                if(isGuest) {
+                    // 未ログイン -> ログイン画面へ
+                    return navTo('auth-screen');
+                }
+                
+                // ログイン済み -> 決済確認へ
+                const cost = dummyUsers[targetUser].mySubPrice;
+                const myName = JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
+                
+                if(dummyUsers[myName].coins < cost) {
+                    alert("コイン不足です。コインを購入してください。");
+                    openWalletModal();
+                    return;
+                }
+                
+                if(confirm(`月額 ${cost} Coins を消費して加入しますか？`)) {
+                    dummyUsers[myName].coins -= cost;
+                    if(!dummyUsers[myName].subscriptions) dummyUsers[myName].subscriptions = [];
+                    dummyUsers[myName].subscriptions.push(targetUser);
+                    saveData();
+                    alert("加入しました！");
+                    openProfile(targetUser); // プロフィールへ移動してコンテンツを表示
+                }
+            }
+        }
+
+        function renderAnswers(postId) { 
+            const list = document.getElementById('answer-list'); 
+            list.innerHTML = ''; 
+            const postAnswers = dummyAnswers.filter(a => a.postId === postId); 
+            const myName = isGuest ? '' : JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name; 
+            
+            postAnswers.forEach(ans => { 
+                const div = document.createElement('div'); 
+                div.className = 'answer-card'; 
+                let isUnlocked = false; 
+                if(!isGuest) { 
+                    if(ans.user === myName) isUnlocked = true; 
+                    if(dummyUsers[myName].subscriptions && dummyUsers[myName].subscriptions.includes(ans.user)) isUnlocked = true; 
+                } 
+                
+                const u = dummyUsers[ans.user] || dummyUsers['Guest']; 
+                let content = ''; 
+                
+                if(ans.isPremium && !isUnlocked) { 
+                    // ロック表示
+                    content = `<div class="blur-content">${ans.text}</div><div class="locked-overlay"><span style="font-size:30px;">🔒</span><button class="btn btn-premium" style="width:auto; margin-top:10px; font-size:12px; padding:5px 15px;" onclick="event.stopPropagation(); unlockUserSub('${ans.user}')">解除</button></div>`; 
+                } else { 
+                    content = `<div class="answer-body">${ans.text}</div><div class="answer-reason">💡 ${ans.reason}</div>`; 
+                } 
+                
+                div.onclick = () => openAnswerDetail(ans.id); 
+                
+                let repliesHtml = ''; 
+                if(ans.replies && ans.replies.length > 0) ans.replies.forEach(rep => repliesHtml += `<div class="reply-box"><div class="reply-header">↪ ${rep.user}</div><div>${rep.text}</div></div>`); 
+                
+                const replyBtn = `<span style="font-size:11px; margin-left:10px; cursor:pointer; color:#888;" onclick="event.stopPropagation(); openReplyInput(${ans.id})">↩ 返信</span>`; 
+                const deleteBtn = (ans.user === myName) ? `<span style="font-size:11px; margin-left:10px; cursor:pointer; color:var(--danger);" onclick="event.stopPropagation(); deleteAnswer(${ans.id})">🗑️ 削除</span>` : ''; 
+                
+                const isSaved = !isGuest && dummyUsers[myName].savedAnswers && dummyUsers[myName].savedAnswers.includes(ans.id); 
+                const saveBtn = (ans.user === myName) ? `<button class="btn-icon-sm disabled" onclick="event.stopPropagation(); alert('自分の回答です')">🔖 保存</button>` : `<button class="btn-icon-sm save ${isSaved?'saved':''}" onclick="event.stopPropagation(); toggleSaveAnswer(${ans.id})">${isSaved?'🔖 保存済':'🔖 保存'}</button>`; 
+                
+                div.innerHTML = `<div class="answer-header"><div class="answer-author" onclick="event.stopPropagation(); openProfile('${ans.user}')">👤 ${ans.user} ${u.isPro?'<span class="pro-badge">PRO</span>':''}</div><div style="display:flex; align-items:center;">${saveBtn}${replyBtn}${deleteBtn}</div></div><div style="position:relative;">${content}</div><div id="reply-area-${ans.id}">${repliesHtml}</div><div id="reply-input-${ans.id}" style="display:none; margin-top:10px;" onclick="event.stopPropagation()"><input type="text" id="reply-text-${ans.id}" placeholder="返信を入力..." style="margin-bottom:5px;"><button class="btn btn-gold" style="padding:8px; font-size:12px;" onclick="submitReply(${ans.id})">送信</button></div>`; 
+                list.appendChild(div); 
+            }); 
+        }
+
+        function openAnswerDetail(ansId) {
+            currentViewingAnswerId = ansId;
+            const ans = dummyAnswers.find(a => a.id === ansId);
+            if(!ans) return;
+
+            const myName = isGuest ? '' : JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
+            
+            // プレミアム回答のロック判定
+            if(ans.isPremium) {
+                if(isGuest || (ans.user !== myName && (!dummyUsers[myName].subscriptions || !dummyUsers[myName].subscriptions.includes(ans.user)))) {
+                    
+                    // サブスク誘導ポップアップ
+                    if(confirm(`${ans.user}さんのサブスク加入者限定です。加入しますか？`)) {
+                        if(isGuest) {
+                            navTo('auth-screen');
+                        } else {
+                            unlockUserSub(ans.user);
+                        }
+                    }
+                    return; 
+                }
+            }
+
+            document.getElementById('view-ans-text').innerText = ans.text;
+            document.getElementById('view-ans-reason').innerText = ans.reason || '（記載なし）';
+
+            const u = dummyUsers[myName] || {};
+            if(!u.votedAnswers) u.votedAnswers = [];
+            const hasVoted = u.votedAnswers.includes(ansId) || ans.user === myName;
+
+            if(hasVoted) showRatingResult(ans);
+            else showRatingInput();
+
+            navTo('answer-view-screen');
+        }
+
         function checkNotification() { const hasUnread = dummyNotifications.some(n => !n.read); if(hasUnread) { document.getElementById('badge-timeline').classList.add('active'); document.getElementById('badge-ranking').classList.add('active'); } }
         function toggleNotification() { const modal = document.getElementById('notification-modal'); const list = document.getElementById('notification-list'); list.innerHTML = ''; dummyNotifications.forEach(n => { const item = document.createElement('div'); item.className = 'notification-item'; let icon = '🔔'; if(n.type === 'reply') icon = '💬'; if(n.type === 'scout') icon = '🚀'; item.innerHTML = `<div class="notif-icon">${icon}</div><div class="notif-content"><div>${n.text}</div><div class="notif-time">${n.time}</div></div>`; item.onclick = () => { document.getElementById('notification-modal').style.display='none'; if(n.isPost && n.targetId) openDetail(n.targetId); }; list.appendChild(item); }); modal.style.display = 'flex'; }
         
-        // Shortened function blocks to fit
         function verifyCompanyCode(){ if(document.getElementById('company-code-input').value==='123'){ isCompanyMode=true; companyId='CORP123'; alert("参加しました"); document.getElementById('company-code-modal').style.display='none'; refreshApp(); } else alert("無効です"); }
         function logout(){ sessionStorage.removeItem('closer_logged_in_user'); location.reload(); }
         function requestAccountDeletion(){ localStorage.removeItem('closer_data_users'); location.reload(); }
@@ -1385,7 +1488,21 @@
         function openRatingModal() { document.getElementById('answer-detail-modal').style.display = 'none'; document.getElementById('rating-modal').style.display = 'flex'; }
         function updateRateVal(type, val) { document.getElementById('val-'+type).innerText = val; }
         function submitDetailRating() { alert("評価を送信しました"); document.getElementById('rating-modal').style.display = 'none'; }
-        function toggleSaveAnswer(ansId) { /* 前と同じ */ const myName = JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name; const u = dummyUsers[myName]; if(!u.savedAnswers) u.savedAnswers=[]; const idx=u.savedAnswers.indexOf(ansId); if(idx===-1){ u.savedAnswers.push(ansId); alert("保存しました"); } else { u.savedAnswers.splice(idx,1); alert("解除しました"); } saveData(); refreshApp(); }
+        
+        /* --- 修正版: 回答保存（ゲスト対応） --- */
+        function toggleSaveAnswer(ansId) {
+            if(isGuest) { alert("保存機能を使うにはログインが必要です"); return navTo('auth-screen'); }
+            
+            const myName = JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name; 
+            const u = dummyUsers[myName]; 
+            if(!u.savedAnswers) u.savedAnswers=[]; 
+            const idx=u.savedAnswers.indexOf(ansId); 
+            if(idx===-1){ u.savedAnswers.push(ansId); alert("保存しました"); } 
+            else { u.savedAnswers.splice(idx,1); alert("解除しました"); } 
+            saveData(); 
+            refreshApp(); 
+        }
+
         function deletePost(id){ if(!confirm("削除?"))return; dummyPosts=dummyPosts.filter(p=>p.id!==id); saveData(); refreshApp(); }
         function deleteAnswer(id){ if(!confirm("削除?"))return; dummyAnswers=dummyAnswers.filter(a=>a.id!==id); saveData(); refreshApp(); }
         function openPostModal(){ document.getElementById('post-modal').style.display='flex'; }
@@ -1393,9 +1510,10 @@
         function openWalletModal(){ document.getElementById('wallet-modal').style.display='flex'; }
         function openSystemPlanModal(){ document.getElementById('system-plan-modal').style.display='flex'; }
         function openCreatorModal(){ document.getElementById('creator-modal').style.display='flex'; }
-        function openProfileEdit(){ /* 前と同じ */ navTo('profile-edit-screen'); }
+        function openProfileEdit(){ navTo('profile-edit-screen'); }
         function previewEditImage(input){ /* 前と同じ */ }
-        function submitPost(){ /* 前と同じ */ const t=document.getElementById('post-content').value; dummyPosts.unshift({id:Date.now(), title:t, tags:['その他'], time:'Now', curiousCount:0, userId:JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name, companyId:null, isCurious: false}); saveData(); refreshApp(); document.getElementById('post-modal').style.display='none'; }
+        function submitPost(){ const t=document.getElementById('post-content').value; dummyPosts.unshift({id:Date.now(), title:t, tags:['その他'], time:'Now', curiousCount:0, userId:JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name, companyId:null, isCurious: false}); saveData(); refreshApp(); document.getElementById('post-modal').style.display='none'; }
+        
         function submitAnswer(){ 
             const t=document.getElementById('answer-content').value; 
             if(!t) return;
@@ -1414,8 +1532,6 @@
             refreshApp(); 
             document.getElementById('answer-modal').style.display='none'; 
         }
-
-        /* --- 以下、不足していた関数群を一括追加 --- */
 
         function menuAction(screenId, isProfile=false) {
             if(document.getElementById('side-menu').classList.contains('open')) toggleMenu();
@@ -1495,8 +1611,14 @@
                 let score = 0;
                 const myAnswers = dummyAnswers.filter(a => a.user === u.name);
                 if(myAnswers.length > 0) {
-                    // 簡易的なスコア計算
-                    const totalVotes = myAnswers.reduce((acc, cur) => acc + (cur.votes[5]||0)*5 + (cur.votes[1]||0), 0);
+                    const totalVotes = myAnswers.reduce((acc, cur) => {
+                        let voteSum = 0;
+                        if(cur.votes) {
+                            for(let k in cur.votes) voteSum += parseInt(k) * cur.votes[k];
+                        }
+                        return acc + voteSum;
+                    }, 0);
+                    // 簡易計算
                     score = (totalVotes / myAnswers.length).toFixed(2);
                 }
                 u.rate = score;
@@ -1606,7 +1728,10 @@
             }
         }
 
+        /* --- 修正版: 返信送信（ゲスト対応） --- */
         function submitReply(ansId) {
+            if(isGuest) { alert("返信するにはログインが必要です"); return navTo('auth-screen'); }
+            
             const txtInput = document.getElementById('reply-text-' + ansId);
             const txt = txtInput.value;
             if(!txt) return;
@@ -1618,157 +1743,59 @@
             refreshApp();
             alert("返信しました");
         }
-        function checkAndSendDM(targetUser) {
-            if(isGuest) { alert("ログインが必要です"); return navTo('auth-screen'); }
 
+        /* --- 回答詳細・評価ロジック（上書き定義） --- */
+        let currentViewingAnswerId = null;
+
+        function showRatingInput() {
+            document.getElementById('rating-input-area').style.display = 'block';
+            document.getElementById('rating-result-area').style.display = 'none';
+            document.getElementById('new-rate-logic').value = 3;
+            document.getElementById('new-rate-tone').value = 3;
+            document.getElementById('new-rate-empathy').value = 3;
+            updateRateVal('logic', 3);
+            updateRateVal('tone', 3);
+            updateRateVal('empathy', 3);
+        }
+
+        function showRatingResult(ans) {
+            document.getElementById('rating-input-area').style.display = 'none';
+            document.getElementById('rating-result-area').style.display = 'block';
+            let totalScore = 0;
+            let count = 0;
+            if(ans.votes) {
+                for (let score in ans.votes) {
+                    let num = ans.votes[score];
+                    totalScore += parseInt(score) * num;
+                    count += num;
+                }
+            }
+            const avg = count > 0 ? (totalScore / count).toFixed(2) : "0.00";
+            document.getElementById('result-score-display').innerText = avg;
+            document.getElementById('result-count-display').innerText = `Based on ${count} votes`;
+        }
+
+        function submitNewRating() {
+            if(isGuest) { alert("評価するにはログインが必要です"); return navTo('auth-screen'); }
+            const logic = parseInt(document.getElementById('new-rate-logic').value);
+            const tone = parseInt(document.getElementById('new-rate-tone').value);
+            const empathy = parseInt(document.getElementById('new-rate-empathy').value);
+            const avg = Math.round((logic + tone + empathy) / 3);
+            const ans = dummyAnswers.find(a => a.id === currentViewingAnswerId);
+            if(!ans.votes) ans.votes = {};
+            if(!ans.votes[avg]) ans.votes[avg] = 0;
+            ans.votes[avg]++;
             const myName = JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
-            // サブスク加入済みかチェック（自分自身含む）
-            const isSubscribed = (targetUser === myName) || (dummyUsers[myName].subscriptions && dummyUsers[myName].subscriptions.includes(targetUser));
-            
-            if(!isSubscribed) {
-                // 未加入の場合：ポップアップを出して支払いへ誘導
-                if(confirm(`メッセージを送るにはサブスクリプションへの加入が必要です。\n\n${targetUser}のプランに加入しますか？`)) {
-                    unlockUserSub(targetUser); // 既存の加入・支払い処理へ
-                }
-            } else {
-                // 加入済みの場合：メッセージ送信処理
-                const input = document.getElementById('dm-input');
-                const txt = input.value;
-                if(!txt) return;
-                
-                const history = document.getElementById('dm-history');
-                // 自分のメッセージを表示
-                history.innerHTML += `<div style="background:var(--accent); color:#000; padding:10px; border-radius:12px; align-self:flex-end; max-width:80%; font-size:14px; font-weight:bold;">${txt}</div>`;
-                input.value = '';
-                history.scrollTop = history.scrollHeight;
-                
-                // 相手からの自動返信（モック）
-                setTimeout(() => {
-                    history.innerHTML += `<div style="background:#333; padding:10px; border-radius:12px; align-self:flex-start; max-width:80%; font-size:14px;">(自動応答) ご連絡ありがとうございます。確認いたします。</div>`;
-                    history.scrollTop = history.scrollHeight;
-                }, 1000);
-            }
-        }
-       /* --- 回答詳細・評価ロジック（上書き定義） --- */
-    
-    // 現在表示中の回答IDを保持
-    let currentViewingAnswerId = null;
-
-    // 既存のモーダルではなく、新画面へ遷移させる
-    openAnswerDetail = function(ansId) {
-        currentViewingAnswerId = ansId;
-        const ans = dummyAnswers.find(a => a.id === ansId);
-        if(!ans) return;
-
-        const myName = isGuest ? '' : JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
-        
-        // プレミアム回答のロック判定
-        if(ans.isPremium) {
-            // 未加入（ゲスト含む）の場合
-            if(isGuest || (ans.user !== myName && (!dummyUsers[myName].subscriptions || !dummyUsers[myName].subscriptions.includes(ans.user)))) {
-                
-                // メッセージ変更と遷移ロジック
-                if(confirm(`${ans.user}さんのサブスクに加入で閲覧可能です。加入しますか？`)) {
-                    if(isGuest) {
-                        // 未ログイン -> ログイン画面へ
-                        navTo('auth-screen');
-                    } else {
-                        // ログイン済み -> サブスク登録（確認ダイアログ）へ直行
-                        unlockUserSub(ans.user);
-                    }
-                }
-                return; // 詳細画面には遷移しない
-            }
-        }
-
-        // 画面に値をセット
-        document.getElementById('view-ans-text').innerText = ans.text;
-        document.getElementById('view-ans-reason').innerText = ans.reason || '（記載なし）';
-
-        // 自分が既に評価済みかチェック
-        const u = dummyUsers[myName] || {};
-        if(!u.votedAnswers) u.votedAnswers = [];
-        
-        // 自分の回答、または既に評価済みなら結果を表示
-        const hasVoted = u.votedAnswers.includes(ansId) || ans.user === myName;
-
-        if(hasVoted) {
+            if(!dummyUsers[myName].votedAnswers) dummyUsers[myName].votedAnswers = [];
+            dummyUsers[myName].votedAnswers.push(currentViewingAnswerId);
+            saveData();
             showRatingResult(ans);
-        } else {
-            showRatingInput();
-        }
-
-        navTo('answer-view-screen');
-    };
-
-    // 入力モードを表示
-    function showRatingInput() {
-        document.getElementById('rating-input-area').style.display = 'block';
-        document.getElementById('rating-result-area').style.display = 'none';
-        // スライダーリセット
-        document.getElementById('new-rate-logic').value = 3;
-        document.getElementById('new-rate-tone').value = 3;
-        document.getElementById('new-rate-empathy').value = 3;
-        updateRateVal('logic', 3);
-        updateRateVal('tone', 3);
-        updateRateVal('empathy', 3);
-    }
-
-    // 結果モードを表示
-    function showRatingResult(ans) {
-        document.getElementById('rating-input-area').style.display = 'none';
-        document.getElementById('rating-result-area').style.display = 'block';
-
-        // 平均スコア計算
-        let totalScore = 0;
-        let count = 0;
-        
-        // votesオブジェクトから計算
-        if(ans.votes) {
-            for (let score in ans.votes) {
-                let num = ans.votes[score];
-                totalScore += parseInt(score) * num;
-                count += num;
-            }
-        }
-
-        const avg = count > 0 ? (totalScore / count).toFixed(2) : "0.00";
-
-        document.getElementById('result-score-display').innerText = avg;
-        document.getElementById('result-count-display').innerText = `Based on ${count} votes`;
-    }
-
-    // 評価送信処理
-    function submitNewRating() {
-        if(isGuest) { alert("評価するにはログインが必要です"); return navTo('auth-screen'); }
-
-        const logic = parseInt(document.getElementById('new-rate-logic').value);
-        const tone = parseInt(document.getElementById('new-rate-tone').value);
-        const empathy = parseInt(document.getElementById('new-rate-empathy').value);
-
-        // 総合点を計算（単純平均）
-        const avg = Math.round((logic + tone + empathy) / 3);
-        
-        // データ保存
-        const ans = dummyAnswers.find(a => a.id === currentViewingAnswerId);
-        if(!ans.votes) ans.votes = {};
-        if(!ans.votes[avg]) ans.votes[avg] = 0;
-        ans.votes[avg]++;
-
-        // 自分が評価したことを記録
-        const myName = JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
-        if(!dummyUsers[myName].votedAnswers) dummyUsers[myName].votedAnswers = [];
-        dummyUsers[myName].votedAnswers.push(currentViewingAnswerId);
-
-        saveData();
-        
-        // 結果表示へ切り替え
-        showRatingResult(ans);
-        alert("評価を送信しました！スコアを表示します。");
-    } 
+            alert("評価を送信しました！スコアを表示します。");
+        }  
     </script>
 </body>
 </html>
+
 
 
 
