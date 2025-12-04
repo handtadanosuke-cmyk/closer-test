@@ -1099,9 +1099,13 @@
         function openProfile(userId) {
             let u;
             const myName = isGuest ? '' : JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
-            viewingProfileUser = userId === 'me' ? myName : userId; // 現在表示中のユーザーを記録
+            viewingProfileUser = userId === 'me' ? myName : userId;
 
-            // 匿名表示ロジック
+            // ★修正ポイント: ゲストが「自分(me)」を開こうとした時だけログインへ誘導し、他人は閲覧許可する
+            if(userId === 'me' && isGuest) {
+                return navTo('auth-screen');
+            }
+
             if(isCompanyMode && userId !== 'me' && userId !== myName) {
                 const realUser = dummyUsers[userId];
                 u = { ...realUser };
@@ -1112,13 +1116,12 @@
             }
             
             if(!u) return;
+
             document.getElementById('prof-name').innerHTML = u.name + (u.isPro ? ' <span class="pro-badge">PRO</span>' : '');
             document.getElementById('prof-role').innerText = `${u.role || '--'}`;
             document.getElementById('prof-rate').innerText = u.rate || '0.00';
-            // アイコン反映
             if(u.img) document.getElementById('prof-img').src = u.img;
             
-            // SNS
             const socialArea = document.getElementById('prof-social');
             socialArea.innerHTML = '';
             if(!u.isAnonymous && u.social) {
@@ -1130,12 +1133,13 @@
             const actionArea = document.getElementById('prof-action-area');
             actionArea.innerHTML = '';
             
-            // サブスクボタン判定 (自分以外、かつ相手がサブスクやってる)
+            // サブスクボタンの表示判定
             if(!u.isAnonymous && userId !== 'me' && u.mySubActive) {
-                const isSubscribed = dummyUsers[myName].subscriptions && dummyUsers[myName].subscriptions.includes(dummyUsers[userId].name);
+                // ★修正ポイント: ゲストの場合 subscriptions がないので空配列をセットしてエラー回避
+                const mySubs = (dummyUsers[myName] && dummyUsers[myName].subscriptions) ? dummyUsers[myName].subscriptions : [];
+                const isSubscribed = mySubs.includes(dummyUsers[userId].name);
                 
                 if(isSubscribed) {
-                    // 加入済み: 退会ボタン
                     const leaveBtn = document.createElement('button');
                     leaveBtn.className = 'btn btn-danger btn-sm';
                     leaveBtn.style.marginTop = '10px';
@@ -1143,7 +1147,6 @@
                     leaveBtn.onclick = function() { leaveUserSub(dummyUsers[userId].name); };
                     actionArea.appendChild(leaveBtn);
                 } else {
-                    // 未加入: 加入ボタン
                     const subBtn = document.createElement('button');
                     subBtn.className = 'btn btn-premium';
                     subBtn.innerText = `★ ${u.name}のサブスク (${u.mySubPrice} Coins/月)`;
@@ -1159,7 +1162,6 @@
                 document.getElementById('prof-coin-display').style.display = 'none';
             }
 
-            // コンテンツ描画 (修正5)
             renderProfileContent(viewingProfileUser);
             navTo('profile-screen');
         }
@@ -1654,9 +1656,46 @@
     let currentViewingAnswerId = null;
 
     // 既存のモーダルではなく、新画面へ遷移させる
+    /* --- 修正版: 回答詳細表示ロジック --- */
     openAnswerDetail = function(ansId) {
         currentViewingAnswerId = ansId;
         const ans = dummyAnswers.find(a => a.id === ansId);
+        if(!ans) return;
+
+        const myName = isGuest ? '' : JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
+        
+        // プレミアム回答のロック判定
+        if(ans.isPremium) {
+            // 未加入（ゲスト含む）の場合
+            if(isGuest || (ans.user !== myName && (!dummyUsers[myName].subscriptions || !dummyUsers[myName].subscriptions.includes(ans.user)))) {
+                
+                // ★修正: メッセージ変更と遷移ロジック
+                if(confirm(`${ans.user}さんのサブスクに加入で閲覧可能です。加入しますか？`)) {
+                    if(isGuest) {
+                        // 未ログイン -> ログイン画面へ
+                        navTo('auth-screen');
+                    } else {
+                        // ログイン済み -> サブスク登録（確認ダイアログ）へ直行
+                        unlockUserSub(ans.user);
+                    }
+                }
+                return; // 詳細画面には遷移しない
+            }
+        }
+
+        // 以下、表示処理（変更なし）
+        document.getElementById('view-ans-text').innerText = ans.text;
+        document.getElementById('view-ans-reason').innerText = ans.reason || '（記載なし）';
+
+        const u = dummyUsers[myName] || {};
+        if(!u.votedAnswers) u.votedAnswers = [];
+        const hasVoted = u.votedAnswers.includes(ansId) || ans.user === myName;
+
+        if(hasVoted) showRatingResult(ans);
+        else showRatingInput();
+
+        navTo('answer-view-screen');
+    };
         if(!ans) return;
 
         // サブスクロック等の判定
@@ -1756,6 +1795,7 @@
     </script>
 </body>
 </html>
+
 
 
 
