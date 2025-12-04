@@ -716,7 +716,155 @@
             <input type="text" id="edit-twitter" placeholder="X (Twitter) ID">
             <input type="text" id="edit-insta" placeholder="Instagram ID">
             <input type="text" id="edit-threads" placeholder="Threads ID">
+<div style="margin-top:20px; padding:15px; background:#1a1a1a; border:1px solid var(--company); border-radius:12px;">
+                <div style="font-size:14px; font-weight:bold; color:var(--company); margin-bottom:10px;">🏢 企業向け非公開データ</div>
+                <p style="font-size:10px; color:#888; margin-bottom:10px;">※ここはスカウト企業にのみ公開されます。</p>
+                
+                <label style="font-size:12px; color:#ccc;">転職意欲</label>
+                <select id="edit-status" style="margin-bottom:10px;">
+                    <option value="今すぐ転職したい">今すぐ転職したい</option>
+                    <option value="良い話があれば">良い話があれば</option>
+                    <option value="情報収集中">情報収集中</option>
+                    <option value="検討していない">検討していない</option>
+                </select>
 
+                <label style="font-size:12px; color:#ccc;">現年収 (万円)</label>
+                <input type="number" id="edit-salary-current" placeholder="例: 450" style="margin-bottom:10px;">
+
+                <label style="font-size:12px; color:#ccc;">希望年収 (万円)</label>
+                <input type="number" id="edit-salary-desire" placeholder="例: 550" style="margin-bottom:10px;">
+
+                <label style="font-size:12px; color:#ccc;">主な実績・アピール（具体的数値で）</label>
+                <textarea id="edit-achievements" rows="4" placeholder="例：昨年度売上1.2億円（達成率120%）、新人賞受賞。テレアポからの成約率5%維持。" style="background:#000;"></textarea>
+            </div>
+            ```
+
+---
+
+### 修正2：JavaScriptのロジック修正（保存と閲覧制御）
+
+JavaScriptの **`saveProfile` 関数** と **`openProfile` 関数** を書き換えます。
+
+ファイルの一番下の方にある既存の2つの関数を、以下のコードに**すべて置き換えて**ください。
+
+```javascript
+        /* --- 修正版: プロフィール保存（スカウト情報対応） --- */
+        function saveProfile() {
+            const myName = JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
+            const u = dummyUsers[myName];
+            
+            // 基本情報の保存
+            const newName = document.getElementById('edit-name').value;
+            if(newName) u.name = newName;
+            u.history = document.getElementById('edit-history').value;
+            u.role = document.getElementById('edit-role').value;
+            u.bio = document.getElementById('edit-bio').value;
+            u.social.twitter = document.getElementById('edit-twitter').value;
+            u.social.insta = document.getElementById('edit-insta').value;
+            u.social.threads = document.getElementById('edit-threads').value;
+            if(document.getElementById('edit-avatar-img').src) u.img = document.getElementById('edit-avatar-img').src;
+            
+            // ★追加: スカウト用情報の保存
+            if(!u.scoutInfo) u.scoutInfo = {};
+            u.scoutInfo.status = document.getElementById('edit-status').value;
+            u.scoutInfo.currentSalary = document.getElementById('edit-salary-current').value;
+            u.scoutInfo.desiredSalary = document.getElementById('edit-salary-desire').value;
+            u.scoutInfo.achievements = document.getElementById('edit-achievements').value;
+
+            saveData();
+            sessionStorage.setItem('closer_logged_in_user', JSON.stringify(u));
+            alert("保存しました");
+            backToPrev();
+            refreshApp();
+        }
+
+        /* --- 修正版: プロフィール表示（企業向けシークレット表示対応） --- */
+        function openProfile(userId) {
+            let u;
+            const myName = isGuest ? '' : JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
+            viewingProfileUser = userId === 'me' ? myName : userId;
+
+            // ゲスト制限
+            if(userId === 'me' && isGuest) return navTo('auth-screen');
+
+            // 企業モード判定
+            const isRecruiter = isCompanyMode; // 本来はユーザーロールで判定
+
+            if(isRecruiter && userId !== 'me' && userId !== myName) {
+                // 企業が見ている場合：実データを使用（匿名化しない＝採用検討のため）
+                u = dummyUsers[userId];
+            } else {
+                u = dummyUsers[viewingProfileUser];
+            }
+            
+            if(!u) return;
+
+            // 基本情報の表示
+            document.getElementById('prof-name').innerHTML = u.name + (u.isPro ? ' <span class="pro-badge">PRO</span>' : '');
+            document.getElementById('prof-role').innerText = `${u.role || '--'}`;
+            document.getElementById('prof-rate').innerText = u.rate || '0.00';
+            if(u.img) document.getElementById('prof-img').src = u.img;
+            
+            // SNSリンク
+            const socialArea = document.getElementById('prof-social');
+            socialArea.innerHTML = '';
+            if(!u.isAnonymous && u.social) {
+                if(u.social.twitter) socialArea.innerHTML += `<a href="https://twitter.com/${u.social.twitter}" target="_blank" class="social-icon">𝕏</a>`;
+                if(u.social.insta) socialArea.innerHTML += `<a href="https://instagram.com/${u.social.insta}" target="_blank" class="social-icon">📸</a>`;
+                if(u.social.threads) socialArea.innerHTML += `<a href="https://threads.net/@${u.social.threads}" target="_blank" class="social-icon">🧵</a>`;
+            }
+
+            // アクションエリア（ボタン類）
+            const actionArea = document.getElementById('prof-action-area');
+            actionArea.innerHTML = '';
+            
+            // ★追加: 企業向けシークレット情報の表示（自分 または 企業が見ている場合のみ）
+            const isMe = (userId === 'me' || userId === myName);
+            
+            if((isMe || isRecruiter) && u.scoutInfo) {
+                const scoutDiv = document.createElement('div');
+                scoutDiv.style.cssText = "background:#111; border:1px solid var(--company); padding:15px; border-radius:8px; margin-top:15px; text-align:left; font-size:13px;";
+                scoutDiv.innerHTML = `
+                    <div style="color:var(--company); font-weight:bold; margin-bottom:5px;">🏢 ${isMe ? '企業へのアピール' : 'スカウト用データ'}</div>
+                    <div><span style="color:#888;">意欲:</span> ${u.scoutInfo.status || '-'}</div>
+                    <div><span style="color:#888;">年収:</span> 現 ${u.scoutInfo.currentSalary||'-'}万 / 希 ${u.scoutInfo.desiredSalary||'-'}万</div>
+                    <div style="margin-top:5px; color:#ccc; white-space:pre-wrap; border-top:1px dashed #333; padding-top:5px;">${u.scoutInfo.achievements || '実績入力なし'}</div>
+                `;
+                actionArea.appendChild(scoutDiv);
+            }
+
+            // サブスクボタン（既存ロジック）
+            if(!u.isAnonymous && !isMe && u.mySubActive) {
+                const mySubs = (dummyUsers[myName] && dummyUsers[myName].subscriptions) ? dummyUsers[myName].subscriptions : [];
+                const isSubscribed = mySubs.includes(dummyUsers[userId].name);
+                
+                if(isSubscribed) {
+                    const leaveBtn = document.createElement('button');
+                    leaveBtn.className = 'btn btn-danger btn-sm';
+                    leaveBtn.style.marginTop = '10px';
+                    leaveBtn.innerText = '退会する';
+                    leaveBtn.onclick = function() { leaveUserSub(dummyUsers[userId].name); };
+                    actionArea.appendChild(leaveBtn);
+                } else {
+                    const subBtn = document.createElement('button');
+                    subBtn.className = 'btn btn-premium';
+                    subBtn.innerText = `★ ${u.name}のサブスク (${u.mySubPrice} Coins/月)`;
+                    subBtn.onclick = function() { unlockUserSub(dummyUsers[userId].name); };
+                    actionArea.appendChild(subBtn);
+                }
+            }
+            
+            // コイン表示
+            if(isMe) {
+                document.getElementById('prof-coin-display').style.display = 'block';
+                document.getElementById('prof-coin-display').innerText = `🪙 ${u.coins} Coins`;
+            } else {
+                document.getElementById('prof-coin-display').style.display = 'none';
+            }
+
+            renderProfileContent(viewingProfileUser);
+            navTo('profile-screen');
+        }
             <button class="btn btn-gold" onclick="saveProfile()">保存する</button>
         </div>
     </div>
@@ -1860,6 +2008,7 @@
     </script>
 </body>
 </html>
+
 
 
 
