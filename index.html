@@ -393,7 +393,7 @@
             <input type="password" id="login-pass" placeholder="パスワード">
             <button class="btn btn-gold" onclick="doLogin()">ログイン</button>
             <div style="text-align:center; margin-top:15px;">
-                <span class="btn-text" onclick="navTo('forgot-pass-screen')">パスワードを忘れた方はこちら</span>
+                <span class="btn-text" onclick="resetFlowStart(); navTo('forgot-pass-screen')">パスワードを忘れた方はこちら</span>
             </div>
         </div>
     </div>
@@ -867,12 +867,33 @@
             <div class="header-action"></div>
         </div>
         <div style="padding:20px;">
-            <p style="font-size:13px; color:#ccc; margin-bottom:20px;">
-                登録時のメールアドレスを入力してください。<br>
-                パスワード再設定用のリンクを送信します。
-            </p>
-            <input type="email" id="reset-email" placeholder="example@email.com">
-            <button class="btn btn-gold" onclick="sendResetLink()">送信する</button>
+            
+            <div id="reset-step-1">
+                <p style="font-size:13px; color:#ccc; margin-bottom:20px;">
+                    登録時のメールアドレスを入力してください。<br>
+                    確認コード（4桁）を送信します。
+                </p>
+                <input type="email" id="reset-email" placeholder="example@email.com">
+                <button class="btn btn-gold" onclick="sendResetCode()">コードを送信</button>
+            </div>
+
+            <div id="reset-step-2" style="display:none;">
+                <p style="font-size:13px; color:#ccc; margin-bottom:20px;">
+                    メールに届いた4桁のコードを入力してください。
+                </p>
+                <input type="tel" id="reset-input-code" placeholder="0000" style="letter-spacing: 5px; text-align:center; font-size:24px;">
+                <button class="btn btn-gold" onclick="verifyResetCode()">認証する</button>
+                <div class="btn-text" style="text-align:center; margin-top:15px;" onclick="resetFlowStart()">最初に戻る</div>
+            </div>
+
+            <div id="reset-step-3" style="display:none;">
+                <p style="font-size:13px; color:#ccc; margin-bottom:20px;">
+                    新しいパスワードを設定してください。
+                </p>
+                <input type="password" id="reset-new-pass" placeholder="新しいパスワード">
+                <button class="btn btn-gold" onclick="commitNewPassword()">変更を保存</button>
+            </div>
+
         </div>
     </div>
     <script>
@@ -1905,21 +1926,113 @@
                 history.scrollTop = history.scrollHeight;
             }, 1000);
         }
+        /* ▼▼▼ パスワードリセット機能（確認コード方式） ▼▼▼ */
         
-function sendResetLink() {
+        // あなたのTemplate ID
+        const EMAILJS_RESET_TEMPLATE_ID = "template_q0slc0y"; 
+
+        // 一時保存用変数
+        let generatedResetCode = null;
+        let resetTargetEmail = null;
+
+        /* --- 1. コード送信 --- */
+        function sendResetCode() {
             const email = document.getElementById('reset-email').value;
             if(!email) return alert("メールアドレスを入力してください");
-            
-            // 本来はここでサーバー側に再設定メール送信リクエストを送る
-            // 今回はシミュレーションとしてアラートを表示
-            
-            // EmailJSを使って自分宛てに通知を送るか、ユーザーに送ったふりをする
-            alert(`${email} 宛にパスワード再設定リンクを送信しました。\nメールを確認してリンクをクリックしてください。`);
-            
-            document.getElementById('reset-email').value = '';
-            backToPrev();
+
+            // ユーザーが存在するか簡易チェック
+            const users = Object.values(dummyUsers);
+            const targetUser = users.find(u => u.email === email);
+            if(!targetUser) {
+                return alert("このメールアドレスは登録されていません。");
+            }
+
+            // 4桁のコード生成
+            generatedResetCode = Math.floor(1000 + Math.random() * 9000).toString();
+            resetTargetEmail = email;
+
+            const btn = event.target;
+            const originalText = btn.innerText;
+            btn.innerText = "送信中...";
+            btn.disabled = true;
+
+            // EmailJSで送信
+            const templateParams = {
+                to_email: email,
+                code: generatedResetCode // EmailJSテンプレート内の {{code}} に対応
+            };
+
+            emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_RESET_TEMPLATE_ID, templateParams)
+            .then(() => {
+                alert("確認コードを送信しました。\nメールを確認してください。");
+                // 画面切り替え
+                document.getElementById('reset-step-1').style.display = 'none';
+                document.getElementById('reset-step-2').style.display = 'block';
+                
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }, (err) => {
+                alert("送信失敗: " + JSON.stringify(err));
+                btn.innerText = originalText;
+                btn.disabled = false;
+            });
         }
+
+        /* --- 2. コード認証 --- */
+        function verifyResetCode() {
+            const inputCode = document.getElementById('reset-input-code').value;
+            if(inputCode === generatedResetCode) {
+                // 認証成功 -> パスワード入力画面へ
+                document.getElementById('reset-step-2').style.display = 'none';
+                document.getElementById('reset-step-3').style.display = 'block';
+            } else {
+                alert("コードが間違っています。");
+            }
+        }
+
+        /* --- 3. パスワード更新 --- */
+        function commitNewPassword() {
+            const newPass = document.getElementById('reset-new-pass').value;
+            if(!newPass || newPass.length < 5) return alert("パスワードは5文字以上で設定してください");
+
+            // ユーザーデータを検索して更新
+            let targetKey = null;
+            for(let key in dummyUsers) {
+                if(dummyUsers[key].email === resetTargetEmail) {
+                    targetKey = key;
+                    break;
+                }
+            }
+
+            if(targetKey) {
+                dummyUsers[targetKey].password = newPass;
+                saveData(); // localStorageに保存
+                alert("パスワードを変更しました。\n新しいパスワードでログインしてください。");
+                
+                // リセットフローの状態を初期化してログイン画面へ
+                resetFlowStart(); 
+                navTo('auth-screen');
+                switchAuthTab('login');
+            } else {
+                alert("ユーザーが見つかりませんでした。");
+            }
+        }
+
+        /* --- 画面リセット用 --- */
+        function resetFlowStart() {
+            generatedResetCode = null;
+            resetTargetEmail = null;
+            document.getElementById('reset-email').value = '';
+            document.getElementById('reset-input-code').value = '';
+            document.getElementById('reset-new-pass').value = '';
+            
+            document.getElementById('reset-step-1').style.display = 'block';
+            document.getElementById('reset-step-2').style.display = 'none';
+            document.getElementById('reset-step-3').style.display = 'none';
+        }
+
     </script>
 </body>
 </html>
+
 
