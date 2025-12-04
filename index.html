@@ -392,6 +392,9 @@
             <input type="email" id="login-email" placeholder="メールアドレス">
             <input type="password" id="login-pass" placeholder="パスワード">
             <button class="btn btn-gold" onclick="doLogin()">ログイン</button>
+            <div style="text-align:center; margin-top:15px;">
+                <span class="btn-text" onclick="navTo('forgot-pass-screen')">パスワードを忘れた方はこちら</span>
+            </div>
         </div>
     </div>
 
@@ -857,7 +860,21 @@
             <button class="btn btn-company" onclick="verifyCompanyCode()">参加</button>
         </div>
     </div>
-
+<div id="forgot-pass-screen" class="screen">
+        <div class="app-header">
+            <div class="menu-btn" onclick="backToPrev()">←</div>
+            <div style="font-weight:800; font-size:16px;">Password Reset</div>
+            <div class="header-action"></div>
+        </div>
+        <div style="padding:20px;">
+            <p style="font-size:13px; color:#ccc; margin-bottom:20px;">
+                登録時のメールアドレスを入力してください。<br>
+                パスワード再設定用のリンクを送信します。
+            </p>
+            <input type="email" id="reset-email" placeholder="example@email.com">
+            <button class="btn btn-gold" onclick="sendResetLink()">送信する</button>
+        </div>
+    </div>
     <script>
         const EMAILJS_PUBLIC_KEY = "UmvB6PSL-gQRkqubw"; 
         const EMAILJS_SERVICE_ID = "service_smgexjp"; 
@@ -1888,7 +1905,8 @@
                 history.scrollTop = history.scrollHeight;
             }, 1000);
         }
-        function sendResetLink() {
+        
+function sendResetLink() {
             const email = document.getElementById('reset-email').value;
             if(!email) return alert("メールアドレスを入力してください");
             
@@ -1901,14 +1919,6 @@
             document.getElementById('reset-email').value = '';
             backToPrev();
         }
-        <div id="auth-flow-login" style="padding:20px; display:none;">
-            <input type="email" id="login-email" placeholder="メールアドレス">
-            <input type="password" id="login-pass" placeholder="パスワード">
-            <button class="btn btn-gold" onclick="doLogin()">ログイン</button>
-            <div style="text-align:center; margin-top:15px;">
-                <span class="btn-text" onclick="navTo('forgot-pass-screen')">パスワードを忘れた方はこちら</span>
-            </div>
-        </div>
     </script>
 </body>
 </html>
