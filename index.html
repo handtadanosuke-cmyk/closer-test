@@ -1659,6 +1659,10 @@
     openAnswerDetail = function(ansId) {
         currentViewingAnswerId = ansId;
         const ans = dummyAnswers.find(a => a.id === ansId);
+        /* --- 修正版: 回答詳細表示ロジック --- */
+    openAnswerDetail = function(ansId) {
+        currentViewingAnswerId = ansId;
+        const ans = dummyAnswers.find(a => a.id === ansId);
         if(!ans) return;
 
         const myName = isGuest ? '' : JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
@@ -1682,7 +1686,7 @@
             }
         }
 
-        // 以下、表示処理（変更なし）
+        // 以下、表示処理
         document.getElementById('view-ans-text').innerText = ans.text;
         document.getElementById('view-ans-reason').innerText = ans.reason || '（記載なし）';
 
@@ -1694,8 +1698,7 @@
         else showRatingInput();
 
         navTo('answer-view-screen');
-    };　// ← ここで openAnswerDetail が終わる
-        
+    };
 
     // 入力モードを表示
     function showRatingInput() {
@@ -1715,7 +1718,7 @@
         document.getElementById('rating-input-area').style.display = 'none';
         document.getElementById('rating-result-area').style.display = 'block';
 
-        // 平均スコア計算（簡易ロジック）
+        // 平均スコア計算
         let totalScore = 0;
         let count = 0;
         
@@ -1765,6 +1768,7 @@
     </script>
 </body>
 </html>
+
 
 
 
