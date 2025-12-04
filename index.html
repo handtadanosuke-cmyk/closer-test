@@ -271,7 +271,18 @@
         .faq-q { font-weight: bold; margin-bottom: 5px; color: var(--text-main); }
         .faq-a { font-size: 13px; color: #aaa; display: none; margin-top: 10px; padding-top: 10px; border-top: 1px dashed #444; }
         .faq-item.open .faq-a { display: block; }
-
+/* 詳細画面用のボックススタイル */
+        .detail-box {
+            background: #222;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 20px;
+            font-size: 16px;
+            line-height: 1.6;
+            color: #fff;
+            white-space: pre-wrap;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
     </style>
 </head>
 <body>
@@ -629,7 +640,48 @@
             </div>
         </div>
     </div>
+<div id="answer-view-screen" class="screen">
+        <div class="app-header">
+            <div class="menu-btn" onclick="backToPrev()">←</div>
+            <div class="logo-btn" onclick="refreshApp()">
+                <span class="logo-icon">🔑</span>
+                <span class="logo-text" style="color:var(--accent);">Closer</span>
+            </div>
+            <div class="header-action"></div>
+        </div>
+        <div class="content">
+            <div style="font-size:12px; color:#888; margin-bottom:5px; margin-left:5px;">具体的な切り返し</div>
+            <div class="detail-box" id="view-ans-text">
+                </div>
 
+            <div style="font-size:12px; color:#888; margin-bottom:5px; margin-left:5px; margin-top:20px;">狙い・理由</div>
+            <div class="detail-box" id="view-ans-reason">
+                </div>
+
+            <hr style="border:0; border-top:1px solid #333; margin:30px 0;">
+
+            <div id="rating-input-area">
+                <div style="text-align:center; font-weight:bold; margin-bottom:20px;">この回答を評価してスコアを見る</div>
+                <div class="rating-grid">
+                    <div class="rating-row"><span>論理性</span><input type="range" min="1" max="5" value="3" class="rating-slider" id="new-rate-logic" oninput="updateRateVal('logic', this.value)"><span id="val-logic" class="rating-val">3</span></div>
+                    <div class="rating-row"><span>応用性</span><input type="range" min="1" max="5" value="3" class="rating-slider" id="new-rate-tone" oninput="updateRateVal('tone', this.value)"><span id="val-tone" class="rating-val">3</span></div>
+                    <div class="rating-row"><span>実用性</span><input type="range" min="1" max="5" value="3" class="rating-slider" id="new-rate-empathy" oninput="updateRateVal('empathy', this.value)"><span id="val-empathy" class="rating-val">3</span></div>
+                </div>
+                <button class="btn btn-gold" onclick="submitNewRating()">評価を確定</button>
+                <div style="font-size:10px; color:#666; text-align:center; margin-top:10px;">※公平性を保つため、評価するまでスコアは表示されません</div>
+            </div>
+
+            <div id="rating-result-area" style="display:none; text-align:center; padding:20px 0;">
+                <div style="font-size:14px; color:#888; margin-bottom:10px;">みんなの評価スコア</div>
+                <div style="font-size:48px; font-weight:900; color:var(--accent);" id="result-score-display">0.00</div>
+                <div style="font-size:12px; color:#aaa;" id="result-count-display">Based on 0 votes</div>
+                
+                <div style="margin-top:20px; padding:15px; background:#222; border-radius:8px; font-size:13px; color:#fff;">
+                    あなたの評価を受け付けました。<br>ご協力ありがとうございます。
+                </div>
+            </div>
+        </div>
+    </div>
     <!-- 利用規約画面 -->
     <div id="terms-screen" class="screen">
         <div class="sub-header" style="display:flex; align-items:center; padding:15px 20px; border-bottom:1px solid #222;">
@@ -1596,8 +1648,114 @@
                 }, 1000);
             }
         }
+        /* --- 回答詳細・評価ロジック（上書き定義） --- */
+    
+    // 現在表示中の回答IDを保持
+    let currentViewingAnswerId = null;
+
+    // 既存のモーダルではなく、新画面へ遷移させる
+    openAnswerDetail = function(ansId) {
+        currentViewingAnswerId = ansId;
+        const ans = dummyAnswers.find(a => a.id === ansId);
+        if(!ans) return;
+
+        // サブスクロック等の判定
+        const myName = isGuest ? '' : JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
+        if(ans.isPremium) {
+            if(isGuest || (ans.user !== myName && (!dummyUsers[myName].subscriptions || !dummyUsers[myName].subscriptions.includes(ans.user)))) {
+                return alert("この回答はロックされています（サブスク限定）");
+            }
+        }
+
+        // 画面に値をセット
+        document.getElementById('view-ans-text').innerText = ans.text;
+        document.getElementById('view-ans-reason').innerText = ans.reason || '（記載なし）';
+
+        // 自分が既に評価済みかチェック
+        const u = dummyUsers[myName] || {};
+        // ユーザーデータに評価済みリストがなければ作成
+        if(!u.votedAnswers) u.votedAnswers = [];
+        
+        // 自分の回答、または既に評価済みなら結果を表示
+        const hasVoted = u.votedAnswers.includes(ansId) || ans.user === myName;
+
+        if(hasVoted) {
+            showRatingResult(ans);
+        } else {
+            showRatingInput();
+        }
+
+        navTo('answer-view-screen');
+    };
+
+    // 入力モードを表示
+    function showRatingInput() {
+        document.getElementById('rating-input-area').style.display = 'block';
+        document.getElementById('rating-result-area').style.display = 'none';
+        // スライダーリセット
+        document.getElementById('new-rate-logic').value = 3;
+        document.getElementById('new-rate-tone').value = 3;
+        document.getElementById('new-rate-empathy').value = 3;
+        updateRateVal('logic', 3);
+        updateRateVal('tone', 3);
+        updateRateVal('empathy', 3);
+    }
+
+    // 結果モードを表示
+    function showRatingResult(ans) {
+        document.getElementById('rating-input-area').style.display = 'none';
+        document.getElementById('rating-result-area').style.display = 'block';
+
+        // 平均スコア計算（簡易ロジック）
+        let totalScore = 0;
+        let count = 0;
+        
+        // votesオブジェクトから計算
+        if(ans.votes) {
+            for (let score in ans.votes) {
+                let num = ans.votes[score];
+                totalScore += parseInt(score) * num;
+                count += num;
+            }
+        }
+
+        const avg = count > 0 ? (totalScore / count).toFixed(2) : "0.00";
+
+        document.getElementById('result-score-display').innerText = avg;
+        document.getElementById('result-count-display').innerText = `Based on ${count} votes`;
+    }
+
+    // 評価送信処理
+    function submitNewRating() {
+        if(isGuest) return alert("評価するにはログインが必要です");
+
+        const logic = parseInt(document.getElementById('new-rate-logic').value);
+        const tone = parseInt(document.getElementById('new-rate-tone').value);
+        const empathy = parseInt(document.getElementById('new-rate-empathy').value);
+
+        // 総合点を計算（単純平均）
+        const avg = Math.round((logic + tone + empathy) / 3);
+        
+        // データ保存
+        const ans = dummyAnswers.find(a => a.id === currentViewingAnswerId);
+        if(!ans.votes) ans.votes = {};
+        if(!ans.votes[avg]) ans.votes[avg] = 0;
+        ans.votes[avg]++;
+
+        // 自分が評価したことを記録
+        const myName = JSON.parse(sessionStorage.getItem('closer_logged_in_user')).name;
+        if(!dummyUsers[myName].votedAnswers) dummyUsers[myName].votedAnswers = [];
+        dummyUsers[myName].votedAnswers.push(currentViewingAnswerId);
+
+        saveData();
+        
+        // 結果表示へ切り替え
+        showRatingResult(ans);
+        alert("評価を送信しました！スコアを表示します。");
+    }
     </script>
 </body>
 </html>
+
 
 
